@@ -1,0 +1,34 @@
+Primária (Roxo Nubank): #820AD1
+
+Roxo claro (variação): #A45DE7
+
+Roxo escuro / fundo: #1E0033
+
+Complementar suave: #E5CCFF
+
+Neutros:
+
+Branco (#FFFFFF)
+
+Cinza claro (#F2F2F2)
+
+Cinza médio (#B3B3B3)
+
+////////////////////////////////////
+Aplicação
+
+Fundo principal: Roxo escuro (#1E0033) ou branco, dependendo se quiser dark mode ou light mode.
+
+Header / Destaques: Roxo Nubank (#820AD1).
+
+Botões principais: Roxo claro (#A45DE7).
+
+Cartões (Saldo / Entradas / Saídas):
+
+Saldo → Roxo Nubank com texto branco.
+
+Entradas → Verde suave (#4CAF50 para diferenciar positivo).
+
+Saídas → Vermelho coral (#FF6B6B para negativo).
+
+Textos secundários: Cinza médio.
