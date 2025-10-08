@@ -63,6 +63,6 @@ export const Logo = styled.img`
   position: absolute;
   transform: translateX(-50%);
   left: 50%;
-  bottom: 1rem;
+  bottom: 1.5rem;
   width: 20rem;
 `;

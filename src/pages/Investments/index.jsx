@@ -4,15 +4,15 @@ import TituloPage from "../../components/Title";
 import BotaoPadrao from "../../components/Button";
 import ExpenseBox from "../../components/BoxDespesas";
 
-function Contas() {
+function Investments() {
   return (
     <div className="frame">
       <MenuNavecacao />
       <div className="containerExpenses">
-        <TituloPage titulo="Contas" />
+        <TituloPage titulo="Investimentos" />
         <div className="boxExpenses">
           <div className="contentExpenses">
-            <ExpenseBox tipo={1}></ExpenseBox>
+            <ExpenseBox tipo={2}></ExpenseBox>
           </div>
           <Link to="/Despesas">
             <BotaoPadrao nomeBotao={"Voltar"} />
@@ -23,4 +23,4 @@ function Contas() {
   );
 }
 
-export default Contas;
+export default Investments;

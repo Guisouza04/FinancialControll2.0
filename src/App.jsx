@@ -6,6 +6,8 @@ import TelaLogin from "./pages/Login";
 import Config from "./pages/Settings";
 import Despesas from "./pages/Despesas";
 import Contas from "./pages/Contas";
+import Investments from "./pages/Investments";
+import Optional from "./pages/Optional";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -26,6 +28,10 @@ function App() {
         <Route path="/Despesas" element={<Despesas />} />
         {/* Tela de Contas */}
         <Route path="/Contas" element={<Contas />} />
+        {/* Tela de Investimentos */}
+        <Route path="/Investments" element={<Investments />} />
+        {/* Tela de Opcionais */}
+        <Route path="/Optional" element={<Optional />} />
         {/* Tela "Not Foud" - Não encontrada */}
         <Route path="*" element={<NotFound />} />
       </Routes>

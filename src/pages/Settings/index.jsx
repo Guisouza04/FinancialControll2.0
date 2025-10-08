@@ -6,14 +6,10 @@ import Cards from "../../components/Card";
 import TituloPage from "../../components/Title";
 import { ContainerCards } from "./styles";
 import { Container } from "./styles";
-import { ModalOverlay } from "./styles";
 import { ModalContent } from "./styles";
 import { ModalTitle } from "./styles";
 import { ModalText } from "./styles";
 import { ModalButtons } from "./styles";
-import { CancelButton } from "./styles";
-import { ConfirmButton } from "./styles";
-import { Input } from "./styles";
 
 function Config() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -152,29 +148,33 @@ function Config() {
           </div>
         </ContainerCards>
 
-        <Link to="/Dados" className="BotaoVoltar">
-          <BotaoPadrao nomeBotao={"Voltar"} variant={"centralizado"} />
+        <Link to="/Dados">
+          <BotaoPadrao nomeBotao={"Voltar"} variant={"centered"} />
         </Link>
       </Container>
 
       {/* Modal de Confirmação de Logout */}
       {showConfirmModal && (
-        <ModalOverlay>
-          <ModalContent>
+        <div className="modalOverlay">
+          <ModalContent className="defaultModal">
             <ModalTitle>Deseja realmente sair?</ModalTitle>
             <ModalText>Tem certeza de que deseja sair do sistema?</ModalText>
             <ModalButtons>
-              <CancelButton onClick={cancelLogout}>Cancelar</CancelButton>
-              <ConfirmButton onClick={confirmLogout}>Sair</ConfirmButton>
+              <button className="button3" onClick={cancelLogout}>
+                Cancelar
+              </button>
+              <button className="button2" onClick={confirmLogout}>
+                Sair
+              </button>
             </ModalButtons>
           </ModalContent>
-        </ModalOverlay>
+        </div>
       )}
 
       {/* Modal de Alteração de Senha */}
       {showPasswordModal && (
-        <ModalOverlay>
-          <ModalContent>
+        <div className="modalOverlay">
+          <ModalContent className="defaultModal">
             <ModalTitle>Alterar Senha</ModalTitle>
             <ModalText>
               Preencha os campos abaixo para alterar sua senha.
@@ -187,19 +187,19 @@ function Config() {
                 marginBottom: "1.5rem",
               }}
             >
-              <Input
+              <input
                 type="password"
                 placeholder="Senha Antiga"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
               />
-              <Input
+              <input
                 type="password"
                 placeholder="Nova Senha"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              <Input
+              <input
                 type="password"
                 placeholder="Confirmar Nova Senha"
                 value={confirmNewPassword}
@@ -207,15 +207,15 @@ function Config() {
               />
             </div>
             <ModalButtons>
-              <CancelButton onClick={cancelChangePassword}>
+              <button className="button3" onClick={cancelChangePassword}>
                 Cancelar
-              </CancelButton>
-              <ConfirmButton onClick={confirmChangePassword}>
+              </button>
+              <button className="button2" onClick={confirmChangePassword}>
                 Confirmar
-              </ConfirmButton>
+              </button>
             </ModalButtons>
           </ModalContent>
-        </ModalOverlay>
+        </div>
       )}
     </div>
   );

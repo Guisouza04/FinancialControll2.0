@@ -5,15 +5,10 @@ import Cards from "../../components/Card";
 import TituloPage from "../../components/Title";
 import { ContainerCards } from "./styles";
 import { Container } from "./styles";
-import { ModalOverlay } from "./styles";
 import { ModalContent } from "./styles";
 import { ModalTitle } from "./styles";
 import { ModalText } from "./styles";
 import { ModalButtons } from "./styles";
-import { CancelButton } from "./styles";
-import { ConfirmButton } from "./styles";
-import { Input } from "./styles";
-import { Select } from "./styles";
 
 function Dados() {
   const [showDadosModal, setShowDadosModal] = useState(false);
@@ -132,8 +127,8 @@ function Dados() {
 
       {/* Modal de Dados */}
       {showDadosModal && (
-        <ModalOverlay>
-          <ModalContent>
+        <div className="modalOverlay">
+          <ModalContent className="defaultModal">
             <ModalTitle>Informações de Salário</ModalTitle>
             <ModalText>
               Preencha os campos abaixo para configurar seus dados.
@@ -146,13 +141,13 @@ function Dados() {
                 marginBottom: "1.5rem",
               }}
             >
-              <Input
+              <input
                 type="number"
                 placeholder="Salário"
                 value={salary}
                 onChange={(e) => setSalary(e.target.value)}
               />
-              <Select
+              <select
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
               >
@@ -160,9 +155,9 @@ function Dados() {
                 <option value="Quinzenal">Quinzenal</option>
                 <option value="Todo dia 5">Todo dia 5</option>
                 <option value="Personalizado">Personalizado</option>
-              </Select>
+              </select>
               {paymentDate === "Personalizado" && (
-                <Input
+                <input
                   type="text"
                   placeholder="Qual a sua data de Pagamento?"
                   value={customPeriod}
@@ -171,11 +166,15 @@ function Dados() {
               )}
             </div>
             <ModalButtons>
-              <CancelButton onClick={cancelDados}>Cancelar</CancelButton>
-              <ConfirmButton onClick={confirmDados}>Confirmar</ConfirmButton>
+              <button className="button3" onClick={cancelDados}>
+                Cancelar
+              </button>
+              <button className="button2" onClick={confirmDados}>
+                Confirmar
+              </button>
             </ModalButtons>
           </ModalContent>
-        </ModalOverlay>
+        </div>
       )}
     </div>
   );

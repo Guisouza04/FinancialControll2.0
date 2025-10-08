@@ -1,7 +1,7 @@
 import styled from "styled-components";
 
 export const StandardButton = styled.div`
-  align-self: ${({ variant }) => (variant === "centralizado" ? "center" : "")};
+  align-self: ${({ variant }) => (variant === "centered" ? "center" : "")};
 
   button {
     align-items: center;

@@ -36,9 +36,6 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // setLoading(true);
-    // setError("");
-    // setSuccess("");
 
     try {
       const response = await api.post("/security/login", {
@@ -47,7 +44,7 @@ const LoginForm = () => {
       });
 
       if (response.data.success) {
-        console.log("Token recebido:", response.data.authToken);
+        localStorage.setItem("authToken", response.data.authToken);
         setTimeout(() => {
           window.location.href = "/Dados";
         }, 1000);

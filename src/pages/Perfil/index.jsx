@@ -6,7 +6,6 @@ import BotaoPadrao from "../../components/Button";
 import { Div } from "./styles";
 import { FormContainer } from "./styles";
 import { StyledForm } from "./styles";
-import { Input } from "./styles";
 import { Title } from "./styles";
 import { BoxBotao } from "./styles";
 import { useState } from "react";
@@ -37,7 +36,7 @@ const Perfil = () => {
         <FormContainer>
           <StyledForm onSubmit={handleSubmit}>
             <Title>Seus Dados</Title>
-            <Input
+            <input
               type="text"
               name="nome"
               placeholder="Seu nome completo"
@@ -45,14 +44,14 @@ const Perfil = () => {
               onChange={handleChange}
               required
             />
-            <Input
+            <input
               type="text"
               name="Apelido"
               placeholder="Como você gostaria de ser chamado?"
               value={formData.apelido}
               onChange={handleChange}
             />
-            <Input
+            <input
               type="email"
               name="email"
               placeholder="Seu melhor E-mail"

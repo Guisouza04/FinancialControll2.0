@@ -34,27 +34,6 @@ export const StyledForm = styled.form`
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 `;
 
-export const Input = styled.input`
-  padding: 12px;
-  border: 2px solid var(--RoxoClaro);
-  border-radius: 4px;
-  background-color: transparent;
-  font-size: 16px;
-  outline: none;
-  transition: border-color 0.3s ease;
-
-  &:focus,
-  &:hover {
-    border-color: var(--RoxoNubank);
-    box-shadow: rgba(155, 75, 247, 0.2) 0 0px 25px 10px;
-  }
-
-  &::placeholder {
-    color: var(--TextSecundarios);
-    opacity: 0.7;
-  }
-`;
-
 export const Title = styled.h2`
   font-size: 3rem;
   text-align: center;
