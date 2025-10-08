@@ -99,23 +99,35 @@ const ExpenseBox = ({ tipo }) => {
         const newAccount = {
           de_conta: newName,
           vl_conta: newValue.toString(),
-          dt_create: new Date().toISOString(),
           qtd_parcelas: parseInt(newMonths),
-          tipo: tipo, // Usar a prop tipo
+          tipo: tipo,
         };
-        const response = await api.post("/financas", newAccount);
+
+        const response = await api.post("/financas/create", newAccount);
         const createdAccount = transformAccount(response.data);
+
         setAccounts([...accounts, createdAccount]);
         setNewName("");
         setNewValue("");
         setNewMonths("");
         setIsModalOpen(false);
         setCurrentPage(1);
+
+        if (tipo === 2) {
+          alert("Investimento adicionado com sucesso!");
+        } else {
+          alert("Conta adicionada com sucesso!");
+        }
         console.log("Conta adicionada com sucesso:", createdAccount);
       } catch (error) {
         console.error("Erro ao adicionar conta:", error);
-        alert("Erro ao adicionar a conta. Tente novamente.");
+        const errorMessage =
+          error.response?.data?.error ||
+          "Erro ao adicionar a conta. Tente novamente.";
+        alert(errorMessage);
       }
+    } else {
+      alert("Por favor, preencha todos os campos!");
     }
   };
 
@@ -123,25 +135,32 @@ const ExpenseBox = ({ tipo }) => {
     const confirmDelete = window.confirm(
       `Tem certeza que deseja excluir a conta "${name}"?`
     );
-    if (confirmDelete) {
-      try {
-        await api.delete(`/financas/${id}`);
-        const newAccounts = accounts.filter((account) => account.id !== id);
-        setAccounts(newAccounts);
-        const totalPages = Math.ceil(newAccounts.length / accountsPerPage);
-        if (currentPage > totalPages && totalPages > 0) {
-          setCurrentPage(totalPages);
-        } else if (newAccounts.length === 0) {
-          setCurrentPage(1);
-        }
-        console.log(
-          "Conta excluída com sucesso. Total de contas:",
-          newAccounts.length
-        );
-      } catch (error) {
-        console.error("Erro ao excluir conta:", error);
-        alert("Erro ao excluir a conta. Tente novamente.");
+
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/financas/delete/${id}`);
+
+      const newAccounts = accounts.filter((account) => account.id !== id);
+      setAccounts(newAccounts);
+
+      const totalPages = Math.ceil(newAccounts.length / accountsPerPage);
+      if (currentPage > totalPages && totalPages > 0) {
+        setCurrentPage(totalPages);
       }
+
+      if (tipo === 2) {
+        alert("Investimento excluído com sucesso!");
+      } else {
+        alert("Conta excluída com sucesso!");
+      }
+      console.log("Conta excluída. Total de contas:", newAccounts.length);
+    } catch (error) {
+      console.error("Erro ao excluir conta:", error);
+      alert(
+        error.response?.data?.error ||
+          "Erro ao excluir a conta. Tente novamente."
+      );
     }
   };
 
