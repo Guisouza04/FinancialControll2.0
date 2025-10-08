@@ -15,6 +15,11 @@ import { PaginationContainer } from "./styles";
 import { PaginationButton } from "./styles";
 
 const ExpenseBox = ({ tipo }) => {
+  // Obter mês e ano atuais do sistema
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear().toString();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+
   const [accounts, setAccounts] = useState([]);
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState("");
@@ -23,8 +28,8 @@ const ExpenseBox = ({ tipo }) => {
   const [editName, setEditName] = useState("");
   const [editValue, setEditValue] = useState("");
   const [editMonths, setEditMonths] = useState("");
-  const [filterYear, setFilterYear] = useState("");
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState(currentYear); // Inicializa com ano atual
+  const [filterMonth, setFilterMonth] = useState(currentMonth); // Inicializa com mês atual
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const accountsPerPage = 5;
@@ -86,11 +91,6 @@ const ExpenseBox = ({ tipo }) => {
   useEffect(() => {
     fetchAccounts();
   }, [tipo, filterYear, filterMonth]);
-
-  // Buscar dados ao carregar a página
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -177,7 +177,7 @@ const ExpenseBox = ({ tipo }) => {
         de_conta: editName,
         vl_conta: editValue.toString(),
         qtd_parcelas: parseInt(editMonths),
-        tipo: tipo, // Usar a prop tipo
+        tipo: tipo,
       };
       const response = await api.put(`/financas/${id}`, updatedAccount);
       const updatedAccountData = transformAccount(response.data);
@@ -245,6 +245,12 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
+  // Função para limpar os filtros
+  const handleClearFilters = () => {
+    setFilterYear("");
+    setFilterMonth("");
+  };
+
   // Função para formatar a exibição de parcelas na coluna months-column
   const formatParcelas = (account) => {
     if (account.durationMonths === 1) {
@@ -290,8 +296,8 @@ const ExpenseBox = ({ tipo }) => {
             </option>
           ))}
         </select>
-        <button className="button2" onClick={fetchAccounts}>
-          Filtrar
+        <button className="button2" onClick={handleClearFilters}>
+          Limpar Filtros
         </button>
       </FilterContainer>
 
