@@ -124,7 +124,7 @@ export const ActionButton = styled.button`
   background-color: transparent;
   border: none;
   margin-right: 5px;
-  padding: 5px 10px;
+  padding: 5px;
   font-size: 1.5rem;
   cursor: pointer;
 

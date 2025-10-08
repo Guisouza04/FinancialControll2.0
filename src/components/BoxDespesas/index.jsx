@@ -28,8 +28,8 @@ const ExpenseBox = ({ tipo }) => {
   const [editName, setEditName] = useState("");
   const [editValue, setEditValue] = useState("");
   const [editMonths, setEditMonths] = useState("");
-  const [filterYear, setFilterYear] = useState(currentYear); // Inicializa com ano atual
-  const [filterMonth, setFilterMonth] = useState(currentMonth); // Inicializa com mês atual
+  const [filterYear, setFilterYear] = useState(currentYear);
+  const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const accountsPerPage = 5;
@@ -47,12 +47,12 @@ const ExpenseBox = ({ tipo }) => {
     creationMonth: new Date(item.dt_create).toISOString().slice(0, 7),
     durationMonths: item.qtd_parcelas,
     tipo: item.tipo,
+    contaPaga: item.conta_paga || "N", // Adiciona status de pagamento
   });
 
   // Função para buscar dados de acordo com o tipo e filtros
   const fetchAccounts = async () => {
     try {
-      // Define a rota de acordo com o tipo
       const endpoints = {
         1: "/financas/contas",
         2: "/financas/investimentos",
@@ -67,7 +67,6 @@ const ExpenseBox = ({ tipo }) => {
         })`
       );
 
-      // Faz a requisição GET com os filtros
       const response = await api.get(endpoint, {
         params: {
           year: filterYear || undefined,
@@ -75,7 +74,6 @@ const ExpenseBox = ({ tipo }) => {
         },
       });
 
-      // Transforma os dados recebidos
       const transformedAccounts = response.data.map(transformAccount);
       setAccounts(transformedAccounts);
       setCurrentPage(1);
@@ -87,7 +85,6 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
-  // Buscar dados quando a página carregar ou filtros mudarem
   useEffect(() => {
     fetchAccounts();
   }, [tipo, filterYear, filterMonth]);
@@ -113,11 +110,6 @@ const ExpenseBox = ({ tipo }) => {
         setIsModalOpen(false);
         setCurrentPage(1);
 
-        if (tipo === 2) {
-          alert("Investimento adicionado com sucesso!");
-        } else {
-          alert("Conta adicionada com sucesso!");
-        }
         console.log("Conta adicionada com sucesso:", createdAccount);
       } catch (error) {
         console.error("Erro ao adicionar conta:", error);
@@ -160,6 +152,39 @@ const ExpenseBox = ({ tipo }) => {
       alert(
         error.response?.data?.error ||
           "Erro ao excluir a conta. Tente novamente."
+      );
+    }
+  };
+
+  const handleTogglePayment = async (id, name, currentStatus) => {
+    const newStatus = currentStatus === "S" ? "N" : "S";
+    const action = newStatus === "S" ? "paga" : "não paga";
+
+    const confirmPayment = window.confirm(
+      `Tem certeza que deseja marcar a conta "${name}" como ${action}?`
+    );
+
+    if (!confirmPayment) return;
+
+    try {
+      const response = await api.put(`/financas/payment-status/${id}`, {
+        conta_paga: newStatus,
+      });
+
+      const updatedAccount = transformAccount(response.data.data);
+      setAccounts(
+        accounts.map((account) =>
+          account.id === id ? updatedAccount : account
+        )
+      );
+
+      alert(`Conta marcada como ${action} com sucesso!`);
+      console.log("Status de pagamento atualizado:", updatedAccount);
+    } catch (error) {
+      console.error("Erro ao atualizar status de pagamento:", error);
+      alert(
+        error.response?.data?.error ||
+          "Erro ao atualizar status de pagamento. Tente novamente."
       );
     }
   };
@@ -245,13 +270,11 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
-  // Função para limpar os filtros
   const handleClearFilters = () => {
     setFilterYear("");
     setFilterMonth("");
   };
 
-  // Função para formatar a exibição de parcelas na coluna months-column
   const formatParcelas = (account) => {
     if (account.durationMonths === 1) {
       return "1";
@@ -307,6 +330,7 @@ const ExpenseBox = ({ tipo }) => {
             <Th className="name-column">Nome</Th>
             <Th className="value-column">Valor</Th>
             <Th className="months-column">Parcela</Th>
+            <Th className="status-column">Status</Th>
             <Th className="actions-column">Ações</Th>
           </tr>
         </thead>
@@ -347,6 +371,16 @@ const ExpenseBox = ({ tipo }) => {
                   formatParcelas(account)
                 )}
               </Td>
+              <Td className="status-column">
+                <span
+                  style={{
+                    color: account.contaPaga === "S" ? "#4CAF50" : "#f44336",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {account.contaPaga === "S" ? "Paga" : "Pendente"}
+                </span>
+              </Td>
               <Td className="actions-column">
                 {editingId === account.id ? (
                   <>
@@ -364,6 +398,22 @@ const ExpenseBox = ({ tipo }) => {
                       onClick={() => handleDelete(account.id, account.name)}
                     >
                       🗑️
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() =>
+                        handleTogglePayment(
+                          account.id,
+                          account.name,
+                          account.contaPaga
+                        )
+                      }
+                      title={
+                        account.contaPaga === "S"
+                          ? "Marcar como não paga"
+                          : "Marcar como paga"
+                      }
+                    >
+                      {account.contaPaga === "S" ? "💰" : "✅"}
                     </ActionButton>
                   </>
                 )}
