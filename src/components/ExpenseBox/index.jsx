@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../../services/api";
+import { useAccounts } from "../../hooks/useAccounts";
 import { Container } from "./styles";
 import { Title } from "./styles";
 import { Form } from "./styles";
@@ -15,177 +15,104 @@ import { PaginationContainer } from "./styles";
 import { PaginationButton } from "./styles";
 
 const ExpenseBox = ({ tipo }) => {
-  // Obter mês e ano atuais do sistema
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear().toString();
   const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
 
-  const [accounts, setAccounts] = useState([]);
+  // Estados de filtros
+  const [filterYear, setFilterYear] = useState(currentYear);
+  const [filterMonth, setFilterMonth] = useState(currentMonth);
+
+  // Hook customizado para gerenciar contas
+  const {
+    accounts,
+    loading,
+    addAccount,
+    updateAccount,
+    deleteAccount,
+    togglePaymentStatus,
+  } = useAccounts(tipo, filterYear, filterMonth);
+
+  // Estados do formulário
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState("");
   const [newMonths, setNewMonths] = useState("");
+
+  // Estados de edição
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editValue, setEditValue] = useState("");
   const [editMonths, setEditMonths] = useState("");
-  const [filterYear, setFilterYear] = useState(currentYear);
-  const [filterMonth, setFilterMonth] = useState(currentMonth);
+
+  // Estados da UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const accountsPerPage = 5;
 
+  const accountsPerPage = 5;
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: String(i + 1).padStart(2, "0"),
     label: String(i + 1).padStart(2, "0"),
   }));
 
-  // Função para transformar dados da API para o formato do estado
-  const transformAccount = (item) => ({
-    id: item.id,
-    name: item.de_conta,
-    value: parseFloat(item.vl_conta),
-    creationMonth: new Date(item.dt_create).toISOString().slice(0, 7),
-    durationMonths: item.qtd_parcelas,
-    tipo: item.tipo,
-    contaPaga: item.conta_paga || "N",
-  });
-
-  // Função para buscar dados de acordo com o tipo e filtros
-  const fetchAccounts = async () => {
-    try {
-      const endpoints = {
-        1: "/financas/contas",
-        2: "/financas/investimentos",
-        3: "/financas/opcionais",
-        4: "/financas/metas",
-      };
-      const endpoint = endpoints[tipo] || "/financas";
-
-      console.log(
-        `🔍 Buscando em: ${endpoint} (Ano: ${filterYear || "Todos"}, Mês: ${
-          filterMonth || "Todos"
-        })`
-      );
-
-      const response = await api.get(endpoint, {
-        params: {
-          year: filterYear || undefined,
-          month: filterMonth || undefined,
-        },
-      });
-
-      const transformedAccounts = response.data.map(transformAccount);
-      setAccounts(transformedAccounts);
-      setCurrentPage(1);
-
-      console.log("✅ Contas buscadas:", transformedAccounts);
-    } catch (error) {
-      console.error("❌ Erro ao buscar contas:", error);
-      alert("Erro ao carregar as contas. Tente novamente.");
-    }
-  };
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [tipo, filterYear, filterMonth]);
-
+  // Handlers
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (newName && newValue && newMonths) {
-      try {
-        const newAccount = {
-          de_conta: newName,
-          vl_conta: newValue.toString(),
-          qtd_parcelas: parseInt(newMonths),
-          tipo: tipo,
-        };
-
-        const response = await api.post("/financas/create", newAccount);
-        const createdAccount = transformAccount(response.data);
-
-        setAccounts([...accounts, createdAccount]);
-        setNewName("");
-        setNewValue("");
-        setNewMonths("");
-        setIsModalOpen(false);
-        setCurrentPage(1);
-
-        console.log("Conta adicionada com sucesso:", createdAccount);
-      } catch (error) {
-        console.error("Erro ao adicionar conta:", error);
-        const errorMessage =
-          error.response?.data?.error ||
-          "Erro ao adicionar a conta. Tente novamente.";
-        alert(errorMessage);
-      }
-    } else {
+    if (!newName || !newValue || !newMonths) {
       alert("Por favor, preencha todos os campos!");
+      return;
+    }
+
+    const result = await addAccount({
+      de_conta: newName,
+      vl_conta: newValue.toString(),
+      qtd_parcelas: parseInt(newMonths),
+    });
+
+    if (result.success) {
+      setNewName("");
+      setNewValue("");
+      setNewMonths("");
+      setIsModalOpen(false);
+      setCurrentPage(1);
+    } else {
+      alert(result.error);
     }
   };
 
   const handleDelete = async (id, name) => {
-    const confirmDelete = window.confirm(
-      `Tem certeza que deseja excluir a conta "${name}"?`
-    );
+    if (!window.confirm(`Tem certeza que deseja excluir a conta "${name}"?`))
+      return;
 
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/financas/delete/${id}`);
-
-      const newAccounts = accounts.filter((account) => account.id !== id);
-      setAccounts(newAccounts);
-
-      const totalPages = Math.ceil(newAccounts.length / accountsPerPage);
+    const result = await deleteAccount(id);
+    if (result.success) {
+      const totalPages = Math.ceil((accounts.length - 1) / accountsPerPage);
       if (currentPage > totalPages && totalPages > 0) {
         setCurrentPage(totalPages);
       }
-
-      if (tipo === 2) {
-        alert("Investimento excluído com sucesso!");
-      } else {
-        alert("Conta excluída com sucesso!");
-      }
-      console.log("Conta excluída. Total de contas:", newAccounts.length);
-    } catch (error) {
-      console.error("Erro ao excluir conta:", error);
       alert(
-        error.response?.data?.error ||
-          "Erro ao excluir a conta. Tente novamente."
+        tipo === 2
+          ? "Investimento excluído com sucesso!"
+          : "Conta excluída com sucesso!"
       );
+    } else {
+      alert(result.error);
     }
   };
 
   const handleTogglePayment = async (id, name, currentStatus) => {
-    const newStatus = currentStatus === "S" ? "N" : "S";
-    const action = newStatus === "S" ? "paga" : "não paga";
+    const action = currentStatus === "S" ? "não paga" : "paga";
+    if (
+      !window.confirm(
+        `Tem certeza que deseja marcar a conta "${name}" como ${action}?`
+      )
+    )
+      return;
 
-    const confirmPayment = window.confirm(
-      `Tem certeza que deseja marcar a conta "${name}" como ${action}?`
-    );
-
-    if (!confirmPayment) return;
-
-    try {
-      const response = await api.put(`/financas/payment-status/${id}`, {
-        conta_paga: newStatus,
-      });
-
-      const updatedAccount = transformAccount(response.data.data);
-      setAccounts(
-        accounts.map((account) =>
-          account.id === id ? updatedAccount : account
-        )
-      );
-
+    const result = await togglePaymentStatus(id, currentStatus);
+    if (result.success) {
       alert(`Conta marcada como ${action} com sucesso!`);
-      console.log("Status de pagamento atualizado:", updatedAccount);
-    } catch (error) {
-      console.error("Erro ao atualizar status de pagamento:", error);
-      alert(
-        error.response?.data?.error ||
-          "Erro ao atualizar status de pagamento. Tente novamente."
-      );
+    } else {
+      alert(result.error);
     }
   };
 
@@ -197,32 +124,49 @@ const ExpenseBox = ({ tipo }) => {
   };
 
   const handleSave = async (id) => {
-    try {
-      const updatedAccount = {
-        de_conta: editName,
-        vl_conta: editValue.toString(),
-        qtd_parcelas: parseInt(editMonths),
-        tipo: tipo,
-      };
-      const response = await api.put(`/financas/${id}`, updatedAccount);
-      const updatedAccountData = transformAccount(response.data);
-      setAccounts(
-        accounts.map((account) =>
-          account.id === id ? updatedAccountData : account
-        )
-      );
+    const result = await updateAccount(id, {
+      de_conta: editName,
+      vl_conta: editValue.toString(),
+      qtd_parcelas: parseInt(editMonths),
+    });
+
+    if (result.success) {
       setEditingId(null);
-      console.log("Conta editada com sucesso:", updatedAccountData);
-    } catch (error) {
-      console.error("Erro ao editar conta:", error);
-      alert("Erro ao editar a conta. Tente novamente.");
+    } else {
+      alert(result.error);
     }
   };
 
-  const handleCancel = () => {
-    setEditingId(null);
+  const handleCancel = () => setEditingId(null);
+
+  const handleClearFilters = () => {
+    setFilterYear("");
+    setFilterMonth("");
   };
 
+  // Funções utilitárias
+  const formatParcelas = (account) => {
+    if (account.durationMonths === 1) return "1";
+
+    const creationDate = new Date(account.creationMonth + "-01");
+    const currentDate = new Date();
+    const monthsDiff =
+      (currentDate.getFullYear() - creationDate.getFullYear()) * 12 +
+      (currentDate.getMonth() - creationDate.getMonth()) +
+      1;
+
+    if (monthsDiff <= 0 || monthsDiff > account.durationMonths) {
+      return `${account.durationMonths}/${account.durationMonths}`;
+    }
+    return `${monthsDiff}/${account.durationMonths}`;
+  };
+
+  const getTipoLabel = () => {
+    const labels = { 1: "Conta", 2: "Investimento", 3: "Conta", 4: "Meta" };
+    return labels[tipo] || "Item";
+  };
+
+  // Filtrar contas
   const filteredAccounts = accounts.filter((account) => {
     const [startYear, startMonth] = account.creationMonth
       .split("-")
@@ -230,6 +174,7 @@ const ExpenseBox = ({ tipo }) => {
     const startDate = new Date(startYear, startMonth - 1);
     const endDate = new Date(startYear, startMonth - 1);
     endDate.setMonth(endDate.getMonth() + account.durationMonths);
+
     const filterYearNum = filterYear ? parseInt(filterYear) : null;
     const filterMonthNum = filterMonth ? parseInt(filterMonth) : null;
     const filterDate =
@@ -256,6 +201,7 @@ const ExpenseBox = ({ tipo }) => {
     return true;
   });
 
+  // Paginação
   const totalPages = Math.ceil(filteredAccounts.length / accountsPerPage);
   const startIndex = (currentPage - 1) * accountsPerPage;
   const paginatedAccounts = filteredAccounts.slice(
@@ -266,32 +212,16 @@ const ExpenseBox = ({ tipo }) => {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      console.log("Mudou para a página:", page);
     }
   };
 
-  const handleClearFilters = () => {
-    setFilterYear("");
-    setFilterMonth("");
-  };
-
-  const formatParcelas = (account) => {
-    if (account.durationMonths === 1) {
-      return "1";
-    }
-    const creationDate = new Date(account.creationMonth + "-01");
-    const currentDate = new Date();
-    const startYear = creationDate.getFullYear();
-    const startMonth = creationDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
-    const monthsDiff =
-      (currentYear - startYear) * 12 + (currentMonth - startMonth) + 1;
-    if (monthsDiff <= 0 || monthsDiff > account.durationMonths) {
-      return `${account.durationMonths}/${account.durationMonths}`;
-    }
-    return `${monthsDiff}/${account.durationMonths}`;
-  };
+  if (loading) {
+    return (
+      <Container>
+        <Title>Carregando...</Title>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -422,20 +352,15 @@ const ExpenseBox = ({ tipo }) => {
           ))}
         </tbody>
       </Table>
+
       <button
         className="button2"
         id="btnAddExpense"
         onClick={() => setIsModalOpen(true)}
       >
-        Adicionar
-        {tipo === 1
-          ? " Conta"
-          : tipo === 2
-          ? " Investimento"
-          : tipo === 3
-          ? " Conta"
-          : " Meta"}
+        Adicionar {getTipoLabel()}
       </button>
+
       {isModalOpen && (
         <div className="modalOverlay">
           <ModalContent className="defaultModal">
@@ -479,6 +404,7 @@ const ExpenseBox = ({ tipo }) => {
           </ModalContent>
         </div>
       )}
+
       {filteredAccounts.length > 0 && (
         <PaginationContainer>
           <PaginationButton
