@@ -47,7 +47,7 @@ const ExpenseBox = ({ tipo }) => {
     creationMonth: new Date(item.dt_create).toISOString().slice(0, 7),
     durationMonths: item.qtd_parcelas,
     tipo: item.tipo,
-    contaPaga: item.conta_paga || "N", // Adiciona status de pagamento
+    contaPaga: item.conta_paga || "N",
   });
 
   // Função para buscar dados de acordo com o tipo e filtros
