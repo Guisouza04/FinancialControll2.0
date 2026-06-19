@@ -1,12 +1,54 @@
-# React + Vite
+# FinancialControl 2.0
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação web de controle financeiro pessoal. Permite gerenciar contas, investimentos e gastos opcionais com filtros por período, controle de parcelas e status de pagamento.
 
-Currently, two official plugins are available:
+> **Este repositório contém apenas o frontend.** O backend (API REST) deve estar rodando separadamente em `http://localhost:4000/api`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tecnologias
 
-## Expanding the ESLint configuration
+- React 19 + Vite 7
+- React Router DOM 7
+- Styled Components
+- Axios
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Pré-requisitos
+
+- Node.js instalado
+- Backend da aplicação rodando em `http://localhost:4000`
+
+## Instalação e execução
+
+```bash
+npm install
+npm run dev
+```
+
+O app estará disponível em `http://localhost:5173`.
+
+## Outros comandos
+
+```bash
+npm run build    # Build de produção
+npm run preview  # Visualizar o build de produção localmente
+npm run lint     # Verificar erros de lint
+```
+
+## Funcionalidades
+
+- **Autenticação** — Login e cadastro com JWT armazenado no localStorage
+- **Contas** — Gerenciamento de contas a pagar com controle de parcelas
+- **Investimentos** — Acompanhamento de investimentos
+- **Opcionais** — Controle de gastos opcionais
+- **Filtros** — Filtrar despesas por mês e ano
+- **Status de pagamento** — Marcar despesas como pagas ou pendentes
+
+## Estrutura
+
+```
+src/
+├── components/   # Componentes reutilizáveis (ExpenseBox, Nav, Card, etc.)
+├── hooks/        # useAccounts — hook central de CRUD financeiro
+├── pages/        # Telas da aplicação
+├── services/     # Axios (api.js) e chamadas à API (financeService.js)
+└── styles/       # Estilos globais e variáveis CSS
+```
