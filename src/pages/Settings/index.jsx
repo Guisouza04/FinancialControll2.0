@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../../services/api";
 import MenuNavecacao from "../../components/Nav";
 import BotaoPadrao from "../../components/Button";
 import Cards from "../../components/Card";
@@ -39,21 +40,32 @@ function Config() {
     setShowPasswordModal(true);
   };
 
-  const confirmChangePassword = () => {
-    if (newPassword !== confirmNewPassword) {
-      alert("As novas senhas não coincidem!");
-      return;
-    }
+  const confirmChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmNewPassword) {
       alert("Por favor, preencha todos os campos!");
       return;
     }
-    // Aqui você pode adicionar lógica para enviar a solicitação de alteração de senha
-    setShowPasswordModal(false);
-    setOldPassword("");
-    setNewPassword("");
-    setConfirmNewPassword("");
-    alert("Senha alterada com sucesso!");
+    if (newPassword !== confirmNewPassword) {
+      alert("As novas senhas não coincidem!");
+      return;
+    }
+    try {
+      await api.put("/security/change-password", {
+        oldPassword,
+        newPassword,
+      });
+      setShowPasswordModal(false);
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      alert("Senha alterada com sucesso!");
+    } catch (err) {
+      console.error("Erro ao alterar senha:", err);
+      alert(
+        err.response?.data?.error ||
+          "Erro ao alterar a senha. Tente novamente."
+      );
+    }
   };
 
   const cancelChangePassword = () => {

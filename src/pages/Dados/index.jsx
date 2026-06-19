@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import api from "../../services/api";
 import MenuNavecacao from "../../components/Nav";
 import Cards from "../../components/Card";
 import TituloPage from "../../components/Title";
@@ -21,7 +22,7 @@ function Dados() {
     setShowDadosModal(true);
   };
 
-  const confirmDados = () => {
+  const confirmDados = async () => {
     if (!salary) {
       alert("Por favor, preencha o campo de salário!");
       return;
@@ -30,12 +31,23 @@ function Dados() {
       alert("Por favor, preencha o período de pagamento personalizado!");
       return;
     }
-    // Aqui você pode adicionar lógica para enviar os dados
-    setShowDadosModal(false);
-    setSalary("");
-    setPaymentDate("Todo 5º dia útil");
-    setCustomPeriod("");
-    alert("Dados salvos com sucesso!");
+    try {
+      await api.post("/financas/salary", {
+        salario: salary,
+        periodo_pagamento:
+          paymentDate === "Personalizado" ? customPeriod : paymentDate,
+      });
+      setShowDadosModal(false);
+      setSalary("");
+      setPaymentDate("Todo 5º dia útil");
+      setCustomPeriod("");
+      alert("Dados salvos com sucesso!");
+    } catch (err) {
+      console.error("Erro ao salvar dados:", err);
+      alert(
+        err.response?.data?.error || "Erro ao salvar os dados. Tente novamente."
+      );
+    }
   };
 
   const cancelDados = () => {
@@ -101,11 +113,11 @@ function Dados() {
                   xmlns="http://www.w3.org/2000/svg"
                   stroke="#e5ccff"
                 >
-                  <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                  <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
                   <g
                     id="SVGRepo_tracerCarrier"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   ></g>
                   <g id="SVGRepo_iconCarrier">
                     {" "}

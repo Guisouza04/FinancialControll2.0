@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import api from "../../services/api";
 import MenuNavecacao from "../../components/Nav";
 import TituloPage from "../../components/Title";
@@ -23,9 +22,17 @@ const Perfil = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Dados do formulário:", formData);
+    try {
+      await api.put("/security/profile", formData);
+      alert("Dados salvos com sucesso!");
+    } catch (err) {
+      console.error("Erro ao salvar perfil:", err);
+      alert(
+        err.response?.data?.error || "Erro ao salvar os dados. Tente novamente."
+      );
+    }
   };
 
   return (
@@ -46,7 +53,7 @@ const Perfil = () => {
             />
             <input
               type="text"
-              name="Apelido"
+              name="apelido"
               placeholder="Como você gostaria de ser chamado?"
               value={formData.apelido}
               onChange={handleChange}
@@ -63,7 +70,7 @@ const Perfil = () => {
               <Link to="../Dados">
                 <BotaoPadrao nomeBotao={"Voltar"}></BotaoPadrao>
               </Link>
-              <BotaoPadrao nomeBotao={"Salvar"}></BotaoPadrao>
+              <BotaoPadrao nomeBotao={"Salvar"} type="submit"></BotaoPadrao>
             </BoxBotao>
           </StyledForm>
         </FormContainer>

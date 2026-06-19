@@ -36,6 +36,9 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
       const response = await api.post("/security/login", {
@@ -45,9 +48,14 @@ const LoginForm = () => {
 
       if (response.data.success) {
         localStorage.setItem("authToken", response.data.authToken);
+        setSuccess("Login realizado com sucesso!");
+        // Mantém loading ativo durante o redirecionamento.
         setTimeout(() => {
           window.location.href = "/Dados";
         }, 1000);
+      } else {
+        setError("Usuário ou senha incorretos.");
+        setLoading(false);
       }
     } catch (err) {
       console.error("Erro no login:", err);
@@ -58,7 +66,6 @@ const LoginForm = () => {
       } else {
         setError("Erro inesperado. Verifique sua conexão.");
       }
-    } finally {
       setLoading(false);
     }
   };

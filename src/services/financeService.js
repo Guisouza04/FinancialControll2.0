@@ -75,7 +75,9 @@ const financeService = {
     const response = await api.put(`/financas/payment-status/${id}`, {
       conta_paga: status,
     });
-    return response.data.data;
+    // Alguns endpoints aninham o objeto em `data`, outros retornam direto.
+    // Tolera ambos os formatos para manter consistência com create/update.
+    return response.data?.data ?? response.data;
   },
 };
 

@@ -70,8 +70,8 @@ const SignUpForm = () => {
         setPassword("");
         setConfirmPassword("");
         setTimeout(() => {
-          window.location.href = "/"; // Ajuste para sua rota de login
-        });
+          window.location.href = "/Login";
+        }, 1500);
       }
     } catch (err) {
       console.error("Erro no cadastro:", err);
@@ -84,7 +84,7 @@ const SignUpForm = () => {
         err.response?.status === 400 &&
         err.response.data.error === "CPF já cadastrado"
       ) {
-        setError("E-mail já cadastrado.");
+        setError("CPF já cadastrado.");
       } else if (err.response?.status === 500) {
         setError("Erro no servidor. Tente novamente.");
       } else {

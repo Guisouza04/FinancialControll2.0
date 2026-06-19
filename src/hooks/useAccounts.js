@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import financeService, { transformAccount } from "../services/financeService";
 
 /**
@@ -13,8 +13,17 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Evita setState após o componente ser desmontado.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Buscar contas
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -23,19 +32,20 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
         filterYear,
         filterMonth
       );
-      const transformedAccounts = data.map(transformAccount);
-      setAccounts(transformedAccounts);
+      if (!isMountedRef.current) return;
+      setAccounts(data.map(transformAccount));
     } catch (err) {
+      if (!isMountedRef.current) return;
       console.error("Erro ao buscar contas:", err);
       setError(err.message || "Erro ao carregar as contas");
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
-  };
+  }, [tipo, filterYear, filterMonth]);
 
   useEffect(() => {
     fetchAccounts();
-  }, [tipo, filterYear, filterMonth]);
+  }, [fetchAccounts]);
 
   // Adicionar conta
   const addAccount = async (accountData) => {
