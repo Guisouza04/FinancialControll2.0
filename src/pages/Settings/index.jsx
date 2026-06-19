@@ -26,6 +26,7 @@ function Config() {
 
   const confirmLogout = () => {
     setShowConfirmModal(false);
+    localStorage.removeItem('authToken');
     navigate("/Login");
   };
 
