@@ -4,6 +4,7 @@ import { Container } from "./styles";
 import { Title } from "./styles";
 import { Form } from "./styles";
 import { Table } from "./styles";
+import { TableWrapper } from "./styles";
 import { Th } from "./styles";
 import { Td } from "./styles";
 import { ActionButton } from "./styles";
@@ -275,7 +276,8 @@ const ExpenseBox = ({ tipo }) => {
         </button>
       </FilterContainer>
 
-      <Table>
+      <TableWrapper>
+        <Table>
         <thead>
           <tr>
             <Th className="name-column">Nome</Th>
@@ -372,7 +374,8 @@ const ExpenseBox = ({ tipo }) => {
             </tr>
           ))}
         </tbody>
-      </Table>
+        </Table>
+      </TableWrapper>
 
       <button
         className="button2"

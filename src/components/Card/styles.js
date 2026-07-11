@@ -4,24 +4,27 @@ export const StyledWrapper = styled.div`
   .card {
     width: 220px;
     height: 321px;
-    background: var(--background);
-    border: 2px solid var(--RoxoNubank);
-    border-radius: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     position: relative;
-    box-shadow: 0 14px 26px rgba(130, 10, 209, 0.04);
-    transition: all 0.3s ease-out;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.35s var(--ease);
     text-decoration: none;
     cursor: pointer;
   }
 
   .card:hover {
-    transform: translateY(-5px) scale(1.005) translateZ(0);
-    box-shadow: 0 24px 36px rgba(0, 0, 0, 0.11),
+    transform: translateY(-6px) scale(1.01) translateZ(0);
+    border-color: var(--glass-border-strong);
+    box-shadow: 0 24px 36px rgba(0, 0, 0, 0.3),
       0 24px 46px rgba(130, 10, 209, 0.48);
   }
 
@@ -57,7 +60,9 @@ export const StyledWrapper = styled.div`
 
   .card p {
     font-size: 17px;
-    color: var(--TextSecundarios);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text-primary);
     margin-top: 30px;
     z-index: 1000;
     transition: color 0.3s ease-out;

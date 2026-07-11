@@ -17,9 +17,47 @@ function Dados() {
   const [paymentDate, setPaymentDate] = useState("Todo 5º dia útil");
   const [customPeriod, setCustomPeriod] = useState("");
 
+  // Modal de Perfil (mesmo padrão pop-up do card de Dados)
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
+  const [perfilData, setPerfilData] = useState({
+    nome: "",
+    apelido: "",
+    email: "",
+  });
+
   const handleDadosClick = (e) => {
     e.preventDefault();
     setShowDadosModal(true);
+  };
+
+  const handlePerfilClick = () => setShowPerfilModal(true);
+
+  const handlePerfilChange = (e) => {
+    const { name, value } = e.target;
+    setPerfilData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const confirmPerfil = async () => {
+    if (!perfilData.nome || !perfilData.email) {
+      alert("Por favor, preencha nome e e-mail!");
+      return;
+    }
+    try {
+      await api.put("/security/profile", perfilData);
+      setShowPerfilModal(false);
+      setPerfilData({ nome: "", apelido: "", email: "" });
+      alert("Dados salvos com sucesso!");
+    } catch (err) {
+      console.error("Erro ao salvar perfil:", err);
+      alert(
+        err.response?.data?.error || "Erro ao salvar os dados. Tente novamente."
+      );
+    }
+  };
+
+  const cancelPerfil = () => {
+    setShowPerfilModal(false);
+    setPerfilData({ nome: "", apelido: "", email: "" });
   };
 
   const confirmDados = async () => {
@@ -63,7 +101,7 @@ function Dados() {
       <Container>
         <TituloPage titulo="Dados" />
         <ContainerCards>
-          <Link to="/perfil">
+          <div onClick={handlePerfilClick} style={{ cursor: "pointer" }}>
             <Cards
               variant="preencherFill"
               name="Perfil"
@@ -81,7 +119,7 @@ function Dados() {
                 </svg>
               }
             />
-          </Link>
+          </div>
           <Link to="/settings">
             <Cards
               variant="preencherFill"
@@ -136,6 +174,54 @@ function Dados() {
           </div>
         </ContainerCards>
       </Container>
+
+      {/* Modal de Perfil */}
+      {showPerfilModal && (
+        <div className="modalOverlay">
+          <ModalContent className="defaultModal">
+            <ModalTitle>Seus Dados</ModalTitle>
+            <ModalText>Atualize suas informações de perfil.</ModalText>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <input
+                type="text"
+                name="nome"
+                placeholder="Seu nome completo"
+                value={perfilData.nome}
+                onChange={handlePerfilChange}
+              />
+              <input
+                type="text"
+                name="apelido"
+                placeholder="Como você gostaria de ser chamado?"
+                value={perfilData.apelido}
+                onChange={handlePerfilChange}
+              />
+              <input
+                type="email"
+                name="email"
+                placeholder="Seu melhor E-mail"
+                value={perfilData.email}
+                onChange={handlePerfilChange}
+              />
+            </div>
+            <ModalButtons>
+              <button className="button3" onClick={cancelPerfil}>
+                Cancelar
+              </button>
+              <button className="button2" onClick={confirmPerfil}>
+                Salvar
+              </button>
+            </ModalButtons>
+          </ModalContent>
+        </div>
+      )}
 
       {/* Modal de Dados */}
       {showDadosModal && (

@@ -1,6 +1,4 @@
 import styled from "styled-components";
-import { css } from "styled-components";
-import { keyframes } from "styled-components";
 
 export const SocialContainer = styled.div`
   display: flex;
@@ -101,6 +99,10 @@ export const Form = styled.form`
   padding: 0 50px;
   height: 100%;
   text-align: center;
+
+  @media (max-width: 768px) {
+    padding: 3rem 2.4rem;
+  }
 `;
 
 export const Input = styled.input`

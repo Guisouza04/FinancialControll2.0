@@ -7,6 +7,12 @@ export const Container = styled.div`
   align-self: flex-start;
   gap: 5rem;
   padding: 5rem;
+
+  @media (max-width: 768px) {
+    gap: 2.5rem;
+    padding: 2rem;
+    width: 100%;
+  }
 `;
 
 export const ContainerCards = styled.div`
@@ -15,4 +21,13 @@ export const ContainerCards = styled.div`
   align-self: flex-start;
   gap: 5rem;
   padding: 5rem;
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-self: center;
+    gap: 2.5rem;
+    padding: 1rem 0;
+    width: 100%;
+  }
 `;

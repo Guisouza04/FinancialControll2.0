@@ -8,6 +8,12 @@ export const Body = styled.div`
   align-items: center;
   flex-direction: column;
   height: 100vh;
+
+  @media (max-width: 768px) {
+    height: auto;
+    min-height: 100dvh;
+    padding: 2rem 1.5rem 3rem;
+  }
 `;
 
 export const Container = styled.div`
@@ -19,6 +25,36 @@ export const Container = styled.div`
   width: 768px;
   max-width: 100%;
   min-height: 480px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: auto;
+  }
+`;
+
+export const MobileSwitch = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2.2rem;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+
+    button {
+      background: none;
+      border: none;
+      color: var(--RoxoClaro);
+      font-weight: 700;
+      font-size: 1.5rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  }
 `;
 
 export const FormContainer = styled.div`
@@ -37,6 +73,15 @@ export const SignInContainer = styled(FormContainer)`
     css`
       transform: translateX(100%);
     `}
+
+  @media (max-width: 768px) {
+    position: relative;
+    width: 100%;
+    height: auto;
+    transform: none;
+    display: ${({ className = "" }) =>
+      className.includes("right-panel-active") ? "none" : "block"};
+  }
 `;
 
 export const SignUpContainer = styled(FormContainer)`
@@ -52,6 +97,17 @@ export const SignUpContainer = styled(FormContainer)`
       z-index: 5;
       animation: ${show} 0.6s;
     `}
+
+  @media (max-width: 768px) {
+    position: relative;
+    width: 100%;
+    height: auto;
+    transform: none;
+    opacity: 1;
+    animation: none;
+    display: ${({ className = "" }) =>
+      className.includes("right-panel-active") ? "block" : "none"};
+  }
 `;
 
 const show = keyframes`
@@ -79,6 +135,10 @@ export const OverlayContainer = styled.div`
     css`
       transform: translateX(-100%);
     `}
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 export const Overlay = styled.div`
@@ -151,22 +211,6 @@ export const Paragraph = styled.p`
   color: var(--TextSecundarios);
 `;
 
-export const Text = styled.span`
-  font-size: 12px;
-`;
-
-export const Anchor = styled.a`
-  color: #333;
-  font-size: 14px;
-  text-decoration: none;
-  margin: 15px 0;
-  transition: transform 80ms ease-in;
-
-  &:hover {
-    color: var(--RoxoEscuro);
-  }
-`;
-
 export const Button = styled.button`
   border-radius: 20px;
   border: 1px solid var(--RoxoNubank);
@@ -192,64 +236,6 @@ export const Button = styled.button`
 export const GhostButton = styled(Button)`
   background-color: transparent;
   border-color: #ffffff;
-`;
-
-export const Form = styled.form`
-  background-color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 0 50px;
-  height: 100%;
-  text-align: center;
-`;
-
-export const Input = styled.input`
-  background-color: #eee;
-  border: none;
-  padding: 12px 15px;
-  margin: 8px 0;
-  width: 100%;
-  color: var(--background);
-`;
-
-export const SocialContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 20px 0;
-`;
-
-export const SocialLink = styled.a`
-  border: 1px solid var(--TextSecundarios);
-  border-radius: 50%;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0 5px;
-  height: 40px;
-  width: 40px;
-  transition: transform 80ms ease-in;
-
-  &:hover {
-    transform: scale(0.95);
-    box-shadow: 1px 1px 25px 0px rgba(0, 0, 0, 0.5);
-    -webkit-box-shadow: 1px 1px 25px 0px rgba(0, 0, 0, 0.5);
-    -moz-box-shadow: 1px 1px 25px 0px rgba(0, 0, 0, 0.5);
-  }
-`;
-
-export const SocialLogo = styled.img`
-  width: 90%;
-
-  &.Google {
-    width: 26px;
-  }
-
-  &.Microsoft {
-    width: 26px;
-  }
 `;
 
 export const Logo = styled.img`

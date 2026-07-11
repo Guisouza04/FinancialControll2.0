@@ -25,18 +25,6 @@ export const Paragraph = styled.p`
   color: var(--TextSecundarios);
 `;
 
-export const Anchor = styled.a`
-  color: #333;
-  font-size: 14px;
-  text-decoration: none;
-  margin: 15px 0;
-  transition: transform 80ms ease-in;
-
-  &:hover {
-    color: var(--RoxoEscuro);
-  }
-`;
-
 export const Button = styled.button`
   border-radius: 20px;
   border: 1px solid var(--RoxoNubank);
@@ -99,6 +87,10 @@ export const Form = styled.form`
   padding: 0 50px;
   height: 100%;
   text-align: center;
+
+  @media (max-width: 768px) {
+    padding: 3rem 2.4rem;
+  }
 `;
 
 export const Input = styled.input`
