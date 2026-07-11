@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import MenuNavecacao from "../../components/Nav";
 import TituloPage from "../../components/Title";
 import BotaoPadrao from "../../components/Button";

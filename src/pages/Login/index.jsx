@@ -12,6 +12,7 @@ import { Title } from "./style";
 import { Paragraph } from "./style";
 import { GhostButton } from "./style";
 import { Logo } from "./style";
+import { MobileSwitch } from "./style";
 
 import logoIcone from "../../assets/Showzas02.svg";
 
@@ -74,6 +75,25 @@ const TelaLogin = () => {
           </Overlay>
         </OverlayContainer>
       </Container>
+
+      {/* Alternador visível apenas no mobile (o overlay deslizante fica oculto) */}
+      <MobileSwitch>
+        {isRightPanelActive ? (
+          <>
+            Já tem conta?
+            <button type="button" onClick={handleSignInClick}>
+              Entrar
+            </button>
+          </>
+        ) : (
+          <>
+            Não tem conta?
+            <button type="button" onClick={handleSignUpClick}>
+              Cadastre-se
+            </button>
+          </>
+        )}
+      </MobileSwitch>
     </Body>
   );
 };

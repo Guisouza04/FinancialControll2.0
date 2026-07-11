@@ -1,9 +1,9 @@
 import { StandardButton } from "./styles";
 
-const BotaoPadrao = ({ nomeBotao, variant }) => {
+const BotaoPadrao = ({ nomeBotao, variant, type = "button", onClick }) => {
   return (
     <StandardButton variant={variant}>
-      <button>
+      <button type={type} onClick={onClick}>
         <span className="text">{nomeBotao}</span>
       </button>
     </StandardButton>

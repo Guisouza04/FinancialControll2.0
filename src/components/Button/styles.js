@@ -12,13 +12,13 @@ export const StandardButton = styled.div`
       var(--RoxoEscuro)
     );
     border: 0;
-    border-radius: 8px;
-    box-shadow: rgba(151, 65, 252, 0.2) 0 15px 30px -5px;
+    border-radius: var(--radius-sm);
+    box-shadow: rgba(151, 65, 252, 0.35) 0 15px 30px -8px;
     box-sizing: border-box;
     color: #ffffff;
-    font-weight: 500;
+    font-weight: 600;
     display: flex;
-    font-size: 18px;
+    font-size: 17px;
     justify-content: center;
     line-height: 1em;
     max-width: 100%;
@@ -40,9 +40,9 @@ export const StandardButton = styled.div`
   }
 
   button span {
-    background-color: var(--background);
-    padding: 16px 24px;
-    border-radius: 6px;
+    background-color: var(--bg-elevated);
+    padding: 15px 26px;
+    border-radius: calc(var(--radius-sm) - 3px);
     width: 100%;
     height: 100%;
     transition: 300ms;

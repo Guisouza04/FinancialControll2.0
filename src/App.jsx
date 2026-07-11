@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Dados from "./pages/Dados";
-import Perfil from "./pages/Perfil";
 import TelaLogin from "./pages/Login";
 import Config from "./pages/Settings";
 import Despesas from "./pages/Despesas";
@@ -39,15 +38,6 @@ function App() {
           element={
             <PrivateRoute>
               <Config />
-            </PrivateRoute>
-          }
-        />
-        {/* Tela de Perfil */}
-        <Route
-          path="/Perfil"
-          element={
-            <PrivateRoute>
-              <Perfil />
             </PrivateRoute>
           }
         />

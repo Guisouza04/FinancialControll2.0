@@ -4,6 +4,7 @@ import { Container } from "./styles";
 import { Title } from "./styles";
 import { Form } from "./styles";
 import { Table } from "./styles";
+import { TableWrapper } from "./styles";
 import { Th } from "./styles";
 import { Td } from "./styles";
 import { ActionButton } from "./styles";
@@ -85,10 +86,8 @@ const ExpenseBox = ({ tipo }) => {
 
     const result = await deleteAccount(id);
     if (result.success) {
-      const totalPages = Math.ceil((accounts.length - 1) / accountsPerPage);
-      if (currentPage > totalPages && totalPages > 0) {
-        setCurrentPage(totalPages);
-      }
+      // O ajuste de página é feito centralmente pelo useEffect de clamp,
+      // que se baseia em filteredAccounts (lista realmente paginada).
       alert(
         tipo === 2
           ? "Investimento excluído com sucesso!"
@@ -124,6 +123,15 @@ const ExpenseBox = ({ tipo }) => {
   };
 
   const handleSave = async (id) => {
+    if (
+      !String(editName).trim() ||
+      String(editValue).trim() === "" ||
+      String(editMonths).trim() === ""
+    ) {
+      alert("Por favor, preencha todos os campos!");
+      return;
+    }
+
     const result = await updateAccount(id, {
       de_conta: editName,
       vl_conta: editValue.toString(),
@@ -149,10 +157,15 @@ const ExpenseBox = ({ tipo }) => {
     if (account.durationMonths === 1) return "1";
 
     const creationDate = new Date(account.creationMonth + "-01");
-    const currentDate = new Date();
+    // Usa o período filtrado como referência (quando ano e mês estão definidos);
+    // caso contrário, usa a data atual.
+    const referenceDate =
+      filterYear && filterMonth
+        ? new Date(parseInt(filterYear), parseInt(filterMonth) - 1)
+        : new Date();
     const monthsDiff =
-      (currentDate.getFullYear() - creationDate.getFullYear()) * 12 +
-      (currentDate.getMonth() - creationDate.getMonth()) +
+      (referenceDate.getFullYear() - creationDate.getFullYear()) * 12 +
+      (referenceDate.getMonth() - creationDate.getMonth()) +
       1;
 
     if (monthsDiff <= 0 || monthsDiff > account.durationMonths) {
@@ -215,6 +228,15 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
+  // Mantém currentPage dentro do intervalo válido sempre que a lista filtrada
+  // mudar (troca de filtro, limpar filtros ou exclusão de itens). Evita ficar
+  // preso numa página vazia quando o total de páginas diminui.
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages > 0 ? totalPages : 1);
+    }
+  }, [totalPages, currentPage]);
+
   if (loading) {
     return (
       <Container>
@@ -254,7 +276,8 @@ const ExpenseBox = ({ tipo }) => {
         </button>
       </FilterContainer>
 
-      <Table>
+      <TableWrapper>
+        <Table>
         <thead>
           <tr>
             <Th className="name-column">Nome</Th>
@@ -351,7 +374,8 @@ const ExpenseBox = ({ tipo }) => {
             </tr>
           ))}
         </tbody>
-      </Table>
+        </Table>
+      </TableWrapper>
 
       <button
         className="button2"
