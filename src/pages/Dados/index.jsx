@@ -4,6 +4,7 @@ import api from "../../services/api";
 import MenuNavecacao from "../../components/Nav";
 import Cards from "../../components/Card";
 import TituloPage from "../../components/Title";
+import Select from "../../components/Select";
 import { ContainerCards } from "./styles";
 import { Container } from "./styles";
 import { ModalContent } from "./styles";
@@ -245,15 +246,17 @@ function Dados() {
                 value={salary}
                 onChange={(e) => setSalary(e.target.value)}
               />
-              <select
+              <Select
                 value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              >
-                <option value="Todo 5º dia útil">Todo 5º dia útil</option>
-                <option value="Quinzenal">Quinzenal</option>
-                <option value="Todo dia 5">Todo dia 5</option>
-                <option value="Personalizado">Personalizado</option>
-              </select>
+                onChange={setPaymentDate}
+                options={[
+                  { value: "Todo 5º dia útil", label: "Todo 5º dia útil" },
+                  { value: "Quinzenal", label: "Quinzenal" },
+                  { value: "Todo dia 5", label: "Todo dia 5" },
+                  { value: "Personalizado", label: "Personalizado" },
+                ]}
+              />
+
               {paymentDate === "Personalizado" && (
                 <input
                   type="text"
