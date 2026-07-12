@@ -31,7 +31,7 @@ const DashboardIcon = (
   </svg>
 );
 
-const DespesasIcon = (
+const FinancasIcon = (
   <svg {...svgProps}>
     <path d="M21 8V7a2 2 0 0 0-2-2H5a2 2 0 0 1 0-4h13" />
     <path d="M3 5v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H5a2 2 0 0 1-2-2Z" />
@@ -58,7 +58,7 @@ const DadosIcon = (
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: DashboardIcon },
-  { to: "/despesas", label: "Despesas", icon: DespesasIcon },
+  { to: "/Financas", label: "Finanças", icon: FinancasIcon },
   { to: "/metas", label: "Metas", icon: MetasIcon },
   { to: "/dados", label: "Dados", icon: DadosIcon },
 ];

@@ -43,9 +43,9 @@ function App() {
         />
         {/* Tela de Login */}
         <Route path="/Login" element={<TelaLogin />} />
-        {/* Tela de Despesas */}
+        {/* Tela de Finanças (hub: Contas, Investimentos, Opcionais) */}
         <Route
-          path="/Despesas"
+          path="/Financas"
           element={
             <PrivateRoute>
               <Despesas />
