@@ -10,7 +10,7 @@ function Despesas() {
     <div className="frame">
       <MenuNavecacao />
       <Container>
-        <TituloPage titulo="Despesas" />
+        <TituloPage titulo="Finanças" />
         <ContainerCards>
           <Link to="/contas">
             <Cards

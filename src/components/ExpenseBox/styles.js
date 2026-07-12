@@ -14,10 +14,14 @@ export const Container = styled.div`
   max-width: 125rem;
   width: 100%;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
 
   @media (max-width: 768px) {
     padding: 1.6rem;
     border-radius: var(--radius-md);
+    flex: none;
+    min-height: auto;
   }
 `;
 
@@ -27,20 +31,72 @@ export const Title = styled.h2`
   font-size: 2.4rem;
 `;
 
-export const FilterContainer = styled.div`
+export const Toolbar = styled.div`
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: stretch;
+
+    & > button {
+      width: 100%;
+    }
+  }
+`;
+
+export const FilterContainer = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  /* Ano (input) */
+  & > input {
+    flex: 0 0 auto;
+    width: 12rem;
+  }
+
+  /* Mês (wrapper do <Select>) */
+  & > div {
+    flex: 0 0 auto;
+    width: 18rem;
+  }
+
+  /* Botão "Mês Atual" / "Data Atual" — não encolhe nem quebra o texto */
+  & > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    & > input,
+    & > div,
+    & > button {
+      width: 100%;
+    }
   }
 `;
 
 export const TableWrapper = styled.div`
   width: 100%;
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+
+  @media (max-width: 768px) {
+    flex: none;
+    min-height: auto;
+  }
 `;
 
 export const Form = styled.form`
@@ -68,50 +124,31 @@ export const ModalTitle = styled.h2`
 
 export const Table = styled.table`
   width: 100%;
-  height: 290px;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   background-color: transparent;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  margin-top: 20px;
   display: block;
+
+  tbody tr {
+    transition: background-color 0.2s var(--ease);
+  }
+  tbody tr:hover {
+    background-color: rgba(164, 93, 231, 0.1);
+  }
 
   @media (max-width: 768px) {
     min-width: 620px;
   }
 `;
 
-export const Thead = styled.thead`
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-`;
-
-export const Tbody = styled.tbody`
-  display: block;
-  max-height: 260px;
-  overflow-y: auto;
-  width: 100%;
-`;
-
-export const Tr = styled.tr`
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-  transition: background-color 0.2s var(--ease);
-
-  &:hover {
-    background-color: rgba(164, 93, 231, 0.1);
-  }
-`;
-
 export const Th = styled.th`
-  background: rgba(79, 1, 134, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(46, 4, 82, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: #fff;
   padding: 14px 12px;
   text-align: left;

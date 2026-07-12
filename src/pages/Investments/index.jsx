@@ -14,7 +14,7 @@ function Investments() {
           <div className="contentExpenses">
             <ExpenseBox tipo={2}></ExpenseBox>
           </div>
-          <Link to="/Despesas">
+          <Link to="/Financas">
             <BotaoPadrao nomeBotao={"Voltar"} />
           </Link>
         </div>

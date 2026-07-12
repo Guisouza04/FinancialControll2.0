@@ -104,21 +104,27 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
     }
   };
 
-  // Atualizar status de pagamento
-  const togglePaymentStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === "S" ? "N" : "S";
+  // Atualizar status de pagamento de UMA parcela (competência "YYYY-MM").
+  // Atualiza a lista `pagamentos` localmente em vez de confiar no formato da
+  // resposta — o backend pode devolver a conta inteira ou só o registro.
+  const togglePaymentStatus = async (id, competencia, currentPaid) => {
+    const newStatus = currentPaid ? "N" : "S";
     try {
-      const updatedAccount = await financeService.updatePaymentStatus(
-        id,
-        newStatus
-      );
-      const transformedAccount = transformAccount(updatedAccount);
+      await financeService.updatePaymentStatus(id, competencia, newStatus);
       setAccounts((prev) =>
-        prev.map((account) =>
-          account.id === id ? transformedAccount : account
-        )
+        prev.map((account) => {
+          if (account.id !== id) return account;
+          const current = Array.isArray(account.pagamentos)
+            ? account.pagamentos
+            : [];
+          const pagamentos =
+            newStatus === "S"
+              ? Array.from(new Set([...current, competencia]))
+              : current.filter((c) => c !== competencia);
+          return { ...account, pagamentos, contaPaga: newStatus };
+        })
       );
-      return { success: true, data: transformedAccount, status: newStatus };
+      return { success: true, status: newStatus };
     } catch (err) {
       console.error("Erro ao atualizar status de pagamento:", err);
       return {
