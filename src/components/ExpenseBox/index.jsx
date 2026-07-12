@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useAccounts } from "../../hooks/useAccounts";
 import { Container } from "./styles";
 import { Title } from "./styles";
@@ -9,11 +9,32 @@ import { Th } from "./styles";
 import { Td } from "./styles";
 import { ActionButton } from "./styles";
 import { FilterContainer } from "./styles";
+import { Toolbar } from "./styles";
 import { ModalContent } from "./styles";
 import { ModalButtons } from "./styles";
 import { ModalTitle } from "./styles";
 import { PaginationContainer } from "./styles";
 import { PaginationButton } from "./styles";
+import {
+  formatBRL,
+  formatDigitsAsBRL,
+  digitsToApiValue,
+  reaisToDigits,
+  hasPositiveValue,
+} from "../../utils/currency";
+import {
+  RECURRENCE,
+  RECURRENCE_OPTIONS,
+  MAX_ANUAL_YEARS,
+  validateRecurrence,
+  buildRecurrencePayload,
+  deriveRecurrenceForm,
+  isActiveInPeriod,
+  occurrenceLabel,
+  occurrenceCompetencia,
+  isPaidInPeriod,
+} from "../../utils/recurrence";
+import Select from "../Select";
 
 const ExpenseBox = ({ tipo }) => {
   const currentDate = new Date();
@@ -23,8 +44,8 @@ const ExpenseBox = ({ tipo }) => {
   // Estados de filtros
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterMonth, setFilterMonth] = useState(currentMonth);
+  const [filterStatus, setFilterStatus] = useState(""); // "" | "S" | "N"
 
-  // Hook customizado para gerenciar contas
   const {
     accounts,
     loading,
@@ -34,60 +55,197 @@ const ExpenseBox = ({ tipo }) => {
     togglePaymentStatus,
   } = useAccounts(tipo, filterYear, filterMonth);
 
-  // Estados do formulário
-  const [newName, setNewName] = useState("");
-  const [newValue, setNewValue] = useState("");
-  const [newMonths, setNewMonths] = useState("");
+  // Formulário do modal (add e edição compartilham o mesmo estado)
+  const [editId, setEditId] = useState(null); // null = adicionando
+  const [name, setName] = useState("");
+  const [valueDigits, setValueDigits] = useState("");
+  const [recorrencia, setRecorrencia] = useState(RECURRENCE.MENSAL);
+  const [dia, setDia] = useState("");
+  const [mes, setMes] = useState(currentMonth);
+  const [fimMes, setFimMes] = useState("12");
+  const [anos, setAnos] = useState("1");
+  const [startY, setStartY] = useState(currentYear);
+  const [startM, setStartM] = useState(currentMonth);
 
-  // Estados de edição
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editValue, setEditValue] = useState("");
-  const [editMonths, setEditMonths] = useState("");
-
-  // Estados da UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const accountsPerPage = 5;
+  // Itens por página calculados dinamicamente pela altura disponível da tabela.
+  const [accountsPerPage, setAccountsPerPage] = useState(8);
+  const tableWrapperRef = useRef(null);
+
+  // Mede a área da tabela e calcula quantas linhas cabem (recalcula ao
+  // redimensionar). Mantém a tabela sempre "cheia" em qualquer altura.
+  useLayoutEffect(() => {
+    const el = tableWrapperRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const node = tableWrapperRef.current;
+      if (!node) return;
+      const head = node.querySelector("thead");
+      const row = node.querySelector("tbody tr");
+      const headH = head?.offsetHeight ?? 48;
+      const rowH = row?.offsetHeight ?? 44;
+      const available = node.clientHeight - headH;
+      const fit = Math.max(1, Math.floor(available / rowH));
+      setAccountsPerPage((prev) => (prev !== fit ? fit : prev));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [loading, accounts.length]);
+
+  const monthNames = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ];
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: String(i + 1).padStart(2, "0"),
-    label: String(i + 1).padStart(2, "0"),
+    label: monthNames[i],
+  }));
+  const monthFilterOptions = [
+    { value: "", label: "Todos os meses" },
+    ...monthOptions,
+  ];
+  const statusOptions = [
+    { value: "", label: "Todas" },
+    { value: "S", label: "Pagas" },
+    { value: "N", label: "Pendentes" },
+  ];
+  const yearOptions = Array.from({ length: MAX_ANUAL_YEARS }, (_, i) => ({
+    value: String(i + 1),
+    label: `${i + 1} ${i + 1 === 1 ? "ano" : "anos"}`,
   }));
 
-  // Handlers
-  const handleAdd = async (e) => {
+  const monthLabel = (mm) => monthNames[parseInt(mm, 10) - 1] || "";
+
+  const labelStyle = {
+    textAlign: "left",
+    fontSize: "13px",
+    color: "var(--text-muted)",
+    marginTop: "4px",
+  };
+
+  // ------- Modal (add / edição) -------
+  const resetForm = () => {
+    setName("");
+    setValueDigits("");
+    setRecorrencia(RECURRENCE.MENSAL);
+    setDia("");
+    setMes(currentMonth);
+    setFimMes("12");
+    setAnos("1");
+    setStartY(currentYear);
+    setStartM(currentMonth);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setEditId(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (account) => {
+    const d = deriveRecurrenceForm(account);
+    setName(account.name);
+    setValueDigits(reaisToDigits(account.value));
+    setRecorrencia(d.recorrencia);
+    setDia(d.dia);
+    setMes(d.mes);
+    setFimMes(d.fimMes);
+    setAnos(d.anos);
+    setStartY(d.startYear);
+    setStartM(d.startMonth);
+    setEditId(account.id);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditId(null);
+    resetForm();
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newName || !newValue || !newMonths) {
-      alert("Por favor, preencha todos os campos!");
+    if (!name || !hasPositiveValue(valueDigits)) {
+      alert("Por favor, preencha nome e valor!");
       return;
     }
 
-    const result = await addAccount({
-      de_conta: newName,
-      vl_conta: newValue.toString(),
-      qtd_parcelas: parseInt(newMonths),
+    const recErr = validateRecurrence({
+      recorrencia,
+      dia,
+      mes,
+      anos,
+      fimMes,
+      startMonth: startM,
+    });
+    if (recErr) {
+      alert(recErr);
+      return;
+    }
+
+    const recurrence = buildRecurrencePayload({
+      recorrencia,
+      dia,
+      mes,
+      anos,
+      fimMes,
+      startYear: startY,
+      startMonth: startM,
     });
 
+    const payload = {
+      de_conta: name,
+      vl_conta: digitsToApiValue(valueDigits),
+      ...recurrence,
+    };
+
+    const result = editId
+      ? await updateAccount(editId, payload)
+      : await addAccount(payload);
+
     if (result.success) {
-      setNewName("");
-      setNewValue("");
-      setNewMonths("");
-      setIsModalOpen(false);
-      setCurrentPage(1);
+      // Ao adicionar, navega o filtro para a 1ª ocorrência (garante que a conta
+      // apareça). Na edição, mantém o filtro atual.
+      if (!editId) {
+        const [sy, sm] = recurrence.data_inicio.split("-");
+        setFilterYear(sy);
+        setFilterMonth(sm);
+        setCurrentPage(1);
+      }
+      closeModal();
     } else {
       alert(result.error);
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Tem certeza que deseja excluir a conta "${name}"?`))
+  const handleDelete = async (id, accountName) => {
+    if (
+      !window.confirm(`Tem certeza que deseja excluir a conta "${accountName}"?`)
+    )
       return;
 
     const result = await deleteAccount(id);
     if (result.success) {
-      // O ajuste de página é feito centralmente pelo useEffect de clamp,
-      // que se baseia em filteredAccounts (lista realmente paginada).
       alert(
         tipo === 2
           ? "Investimento excluído com sucesso!"
@@ -98,67 +256,49 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
-  const handleTogglePayment = async (id, name, currentStatus) => {
-    const action = currentStatus === "S" ? "não paga" : "paga";
+  const handleTogglePayment = async (account) => {
+    // O status agora é por parcela: precisamos da competência (mês/ano) exibida.
+    const competencia = occurrenceCompetencia(account, filterYear, filterMonth);
+    if (!competencia) {
+      alert(
+        "Selecione um mês específico no filtro para marcar a parcela como paga."
+      );
+      return;
+    }
+
+    const isPaid = isPaidInPeriod(account, filterYear, filterMonth);
+    const action = isPaid ? "não paga" : "paga";
+    const [cy, cm] = competencia.split("-");
     if (
       !window.confirm(
-        `Tem certeza que deseja marcar a conta "${name}" como ${action}?`
+        `Marcar a parcela de ${monthLabel(cm)}/${cy} da conta "${account.name}" como ${action}?`
       )
     )
       return;
 
-    const result = await togglePaymentStatus(id, currentStatus);
+    const result = await togglePaymentStatus(account.id, competencia, isPaid);
     if (result.success) {
-      alert(`Conta marcada como ${action} com sucesso!`);
+      alert(`Parcela marcada como ${action} com sucesso!`);
     } else {
       alert(result.error);
     }
   };
 
-  const startEditing = (account) => {
-    setEditingId(account.id);
-    setEditName(account.name);
-    setEditValue(account.value);
-    setEditMonths(account.durationMonths);
+  const handleCurrentDate = () => {
+    setFilterYear(currentYear);
+    setFilterMonth(currentMonth);
   };
 
-  const handleSave = async (id) => {
-    if (
-      !String(editName).trim() ||
-      String(editValue).trim() === "" ||
-      String(editMonths).trim() === ""
-    ) {
-      alert("Por favor, preencha todos os campos!");
-      return;
-    }
-
-    const result = await updateAccount(id, {
-      de_conta: editName,
-      vl_conta: editValue.toString(),
-      qtd_parcelas: parseInt(editMonths),
-    });
-
-    if (result.success) {
-      setEditingId(null);
-    } else {
-      alert(result.error);
-    }
-  };
-
-  const handleCancel = () => setEditingId(null);
-
-  const handleClearFilters = () => {
-    setFilterYear("");
-    setFilterMonth("");
-  };
-
-  // Funções utilitárias
+  // Coluna "Parcela": rótulo da ocorrência
   const formatParcelas = (account) => {
+    if (account.recorrencia) {
+      return occurrenceLabel(account, filterYear, filterMonth);
+    }
+
+    // Legado: baseado em qtd_parcelas/creationMonth.
     if (account.durationMonths === 1) return "1";
 
     const creationDate = new Date(account.creationMonth + "-01");
-    // Usa o período filtrado como referência (quando ano e mês estão definidos);
-    // caso contrário, usa a data atual.
     const referenceDate =
       filterYear && filterMonth
         ? new Date(parseInt(filterYear), parseInt(filterMonth) - 1)
@@ -181,6 +321,18 @@ const ExpenseBox = ({ tipo }) => {
 
   // Filtrar contas
   const filteredAccounts = accounts.filter((account) => {
+    // Filtro por status de pagamento — avaliado por competência (parcela).
+    if (filterStatus) {
+      const paid = isPaidInPeriod(account, filterYear, filterMonth) ? "S" : "N";
+      if (paid !== filterStatus) return false;
+    }
+
+    // Contas com recorrência usam a regra (UNICA/MENSAL/ANUAL).
+    if (account.recorrencia) {
+      return isActiveInPeriod(account, filterYear, filterMonth);
+    }
+
+    // Legado: janela de meses consecutivos a partir do creationMonth.
     const [startYear, startMonth] = account.creationMonth
       .split("-")
       .map(Number);
@@ -228,9 +380,6 @@ const ExpenseBox = ({ tipo }) => {
     }
   };
 
-  // Mantém currentPage dentro do intervalo válido sempre que a lista filtrada
-  // mudar (troca de filtro, limpar filtros ou exclusão de itens). Evita ficar
-  // preso numa página vazia quando o total de páginas diminui.
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages > 0 ? totalPages : 1);
@@ -247,177 +396,182 @@ const ExpenseBox = ({ tipo }) => {
 
   return (
     <Container>
-      <Title>Filtros</Title>
-      <FilterContainer>
-        <input
-          type="text"
-          placeholder="Ano (YYYY)"
-          value={filterYear}
-          onChange={(e) => {
-            if (e.target.value.length <= 4 && /^\d*$/.test(e.target.value)) {
-              setFilterYear(e.target.value);
-            }
-          }}
-          maxLength={4}
-        />
-        <select
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
-        >
-          <option value="">Todos os meses</option>
-          {monthOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <button className="button2" onClick={handleClearFilters}>
-          Limpar Filtros
+      <Toolbar>
+        <FilterContainer>
+          <input
+            type="text"
+            placeholder="Ano (YYYY)"
+            value={filterYear}
+            onChange={(e) => {
+              if (e.target.value.length <= 4 && /^\d*$/.test(e.target.value)) {
+                setFilterYear(e.target.value);
+              }
+            }}
+            maxLength={4}
+          />
+          <Select
+            value={filterMonth}
+            onChange={setFilterMonth}
+            options={monthFilterOptions}
+            placeholder="Todos os meses"
+          />
+          <Select
+            value={filterStatus}
+            onChange={setFilterStatus}
+            options={statusOptions}
+            placeholder="Todas"
+          />
+          <button className="button2" onClick={handleCurrentDate}>
+            {filterYear !== currentYear ? "Data Atual" : "Mês Atual"}
+          </button>
+        </FilterContainer>
+        <button className="button2" onClick={openAddModal}>
+          Adicionar {getTipoLabel()}
         </button>
-      </FilterContainer>
+      </Toolbar>
 
-      <TableWrapper>
+      <TableWrapper ref={tableWrapperRef}>
         <Table>
-        <thead>
-          <tr>
-            <Th className="name-column">Nome</Th>
-            <Th className="value-column">Valor</Th>
-            <Th className="months-column">Parcela</Th>
-            <Th className="status-column">Status</Th>
-            <Th className="actions-column">Ações</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedAccounts.map((account) => (
-            <tr key={account.id}>
-              <Td className="name-column">
-                {editingId === account.id ? (
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
-                ) : (
-                  account.name
-                )}
-              </Td>
-              <Td className="value-column">
-                {editingId === account.id ? (
-                  <input
-                    type="number"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                  />
-                ) : (
-                  `R$ ${account.value.toFixed(2)}`
-                )}
-              </Td>
-              <Td className="months-column">
-                {editingId === account.id ? (
-                  <input
-                    type="number"
-                    value={editMonths}
-                    onChange={(e) => setEditMonths(e.target.value)}
-                    min="1"
-                  />
-                ) : (
-                  formatParcelas(account)
-                )}
-              </Td>
-              <Td className="status-column">
-                <span
-                  style={{
-                    color: account.contaPaga === "S" ? "#4CAF50" : "#f44336",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {account.contaPaga === "S" ? "Paga" : "Pendente"}
-                </span>
-              </Td>
-              <Td className="actions-column">
-                {editingId === account.id ? (
-                  <>
-                    <ActionButton onClick={() => handleSave(account.id)}>
-                      ✅
-                    </ActionButton>
-                    <ActionButton onClick={handleCancel}>❌</ActionButton>
-                  </>
-                ) : (
-                  <>
-                    <ActionButton onClick={() => startEditing(account)}>
+          <thead>
+            <tr>
+              <Th className="name-column">Nome</Th>
+              <Th className="value-column">Valor</Th>
+              <Th className="months-column">Parcela</Th>
+              <Th className="status-column">Status</Th>
+              <Th className="actions-column">Ações</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedAccounts.map((account) => {
+              const paid = isPaidInPeriod(account, filterYear, filterMonth);
+              return (
+                <tr key={account.id}>
+                  <Td className="name-column">{account.name}</Td>
+                  <Td className="value-column">{formatBRL(account.value)}</Td>
+                  <Td className="months-column">{formatParcelas(account)}</Td>
+                  <Td className="status-column">
+                    <span
+                      style={{
+                        color: paid ? "#4CAF50" : "#f44336",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {paid ? "Paga" : "Pendente"}
+                    </span>
+                  </Td>
+                  <Td className="actions-column">
+                    <ActionButton
+                      title="Editar"
+                      onClick={() => openEditModal(account)}
+                    >
                       ✏️
                     </ActionButton>
                     <ActionButton
+                      title="Excluir"
                       onClick={() => handleDelete(account.id, account.name)}
                     >
                       🗑️
                     </ActionButton>
                     <ActionButton
-                      onClick={() =>
-                        handleTogglePayment(
-                          account.id,
-                          account.name,
-                          account.contaPaga
-                        )
-                      }
+                      onClick={() => handleTogglePayment(account)}
                       title={
-                        account.contaPaga === "S"
-                          ? "Marcar como não paga"
-                          : "Marcar como paga"
+                        paid ? "Marcar como não paga" : "Marcar como paga"
                       }
                     >
-                      {account.contaPaga === "S" ? "💰" : "✅"}
+                      {paid ? "💰" : "✅"}
                     </ActionButton>
-                  </>
-                )}
-              </Td>
-            </tr>
-          ))}
-        </tbody>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
         </Table>
       </TableWrapper>
-
-      <button
-        className="button2"
-        id="btnAddExpense"
-        onClick={() => setIsModalOpen(true)}
-      >
-        Adicionar {getTipoLabel()}
-      </button>
 
       {isModalOpen && (
         <div className="modalOverlay">
           <ModalContent className="defaultModal">
-            <ModalTitle>Nova Conta</ModalTitle>
-            <Form onSubmit={handleAdd}>
+            <ModalTitle>{editId ? "Editar Conta" : "Nova Conta"}</ModalTitle>
+            <Form onSubmit={handleSubmit}>
               <input
                 type="text"
                 placeholder="Nome da conta"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
               />
               <input
-                type="number"
-                placeholder="Valor"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                required
+                type="text"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
+                value={formatDigitsAsBRL(valueDigits)}
+                onChange={(e) =>
+                  setValueDigits(e.target.value.replace(/\D/g, ""))
+                }
               />
-              <input
-                type="number"
-                placeholder="Meses de duração"
-                value={newMonths}
-                onChange={(e) => setNewMonths(e.target.value)}
-                required
-                min="1"
+
+              <label style={labelStyle}>Recorrência</label>
+              <Select
+                value={recorrencia}
+                onChange={setRecorrencia}
+                options={RECURRENCE_OPTIONS}
               />
+
+              {recorrencia === RECURRENCE.UNICA && (
+                <>
+                  <label style={labelStyle}>Mês</label>
+                  <Select value={mes} onChange={setMes} options={monthOptions} />
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="Dia do vencimento (1–31)"
+                    value={dia}
+                    onChange={(e) => setDia(e.target.value)}
+                  />
+                </>
+              )}
+
+              {recorrencia === RECURRENCE.MENSAL && (
+                <>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="Dia do vencimento (1–31)"
+                    value={dia}
+                    onChange={(e) => setDia(e.target.value)}
+                  />
+                  <label style={labelStyle}>
+                    Início: {monthLabel(startM)} de {startY} — até o mês:
+                  </label>
+                  <Select
+                    value={fimMes}
+                    onChange={setFimMes}
+                    options={monthOptions}
+                  />
+                </>
+              )}
+
+              {recorrencia === RECURRENCE.ANUAL && (
+                <>
+                  <label style={labelStyle}>Mês e dia do vencimento</label>
+                  <Select value={mes} onChange={setMes} options={monthOptions} />
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="Dia do vencimento (1–31)"
+                    value={dia}
+                    onChange={(e) => setDia(e.target.value)}
+                  />
+                  <label style={labelStyle}>Por quantos anos?</label>
+                  <Select value={anos} onChange={setAnos} options={yearOptions} />
+                </>
+              )}
+
               <ModalButtons>
-                <button
-                  className="button3"
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                >
+                <button className="button3" type="button" onClick={closeModal}>
                   Cancelar
                 </button>
                 <button className="button2" type="submit">

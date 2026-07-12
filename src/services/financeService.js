@@ -66,13 +66,21 @@ const financeService = {
   },
 
   /**
-   * Atualiza o status de pagamento de uma conta
+   * Atualiza o status de pagamento de UMA parcela (competência) da conta.
+   *
+   * Contrato (modelo A — tabela `pagamentos`): o backend faz upsert em
+   * `pagamentos(conta_id, competencia, pago)`. Marcar como paga (`"S"`) insere/
+   * ativa a linha da competência; `"N"` remove/desativa. O status deixa de ser
+   * um único campo na conta e passa a ser por mês/ano.
+   *
    * @param {number} id - ID da conta
+   * @param {string} competencia - Competência da parcela ("YYYY-MM")
    * @param {string} status - Status de pagamento ('S' ou 'N')
    * @returns {Promise<Object>} Conta atualizada
    */
-  async updatePaymentStatus(id, status) {
+  async updatePaymentStatus(id, competencia, status) {
     const response = await api.put(`/financas/payment-status/${id}`, {
+      competencia,
       conta_paga: status,
     });
     // Alguns endpoints aninham o objeto em `data`, outros retornam direto.
@@ -94,6 +102,14 @@ export const transformAccount = (item) => ({
   durationMonths: item.qtd_parcelas,
   tipo: item.tipo,
   contaPaga: item.conta_paga || "N",
+  // Competências pagas ("YYYY-MM") — status por parcela (modelo A). Quando o
+  // backend ainda não envia, fica null e a UI cai no `contaPaga` legado.
+  pagamentos: Array.isArray(item.pagamentos) ? item.pagamentos : null,
+  // Campos de recorrência (backend em alinhamento). Ausentes em registros legados.
+  recorrencia: item.recorrencia || null,
+  diaVencimento: item.dia_vencimento ?? null,
+  dataInicio: item.data_inicio || null,
+  dataFim: item.data_fim || null,
 });
 
 export default financeService;

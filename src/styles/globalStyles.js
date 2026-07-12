@@ -105,10 +105,8 @@ const GlobalStyles = createGlobalStyle`
   grid-template-columns: auto 1fr;
   width: 100%;
   height: 100vh;
-  max-height: 837px;
  }
 
- select,
  input {
   padding: 12px 14px;
   border: 1px solid var(--glass-border);
@@ -135,11 +133,6 @@ const GlobalStyles = createGlobalStyle`
     color: var(--text-muted);
     opacity: 0.8;
   }
- }
-
- select option {
-  background-color: var(--bg-elevated);
-  color: var(--text-primary);
  }
 
  .modalOverlay {
@@ -193,11 +186,6 @@ const GlobalStyles = createGlobalStyle`
   }
  }
 
- /* Botão "Adicionar Contas" das telas de despesas */
- #btnAddExpense {
-  align-self: flex-end;
- }
-
    .button3 {
     padding: 13px 26px;
     border-radius: var(--radius-sm);
@@ -228,15 +216,17 @@ const GlobalStyles = createGlobalStyle`
   display: flex;
   flex-direction: column;
   justify-content: start;
-  align-self: flex-start;
   gap: 4rem;
   padding: 5rem;
-  max-height: 867px;
+  height: 100%;
+  min-height: 0;
  }
 
  .boxExpenses {
-    display: flex;
+  display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
 
   a {
     margin-top: 2rem;
@@ -250,7 +240,8 @@ const GlobalStyles = createGlobalStyle`
   flex-direction: column;
   align-items: center;
   width: 100%;
-  min-height: auto;
+  flex: 1;
+  min-height: 0;
   border-bottom: solid 1px var(--glass-border);
   border-top: solid 1px var(--glass-border);
   padding: 2rem;
@@ -283,8 +274,15 @@ const GlobalStyles = createGlobalStyle`
   .containerExpenses {
     padding: 2rem;
     gap: 2.5rem;
-    max-height: none;
+    height: auto;
     width: 100%;
+  }
+
+  /* No mobile a tabela cresce com o conteúdo (a página rola). */
+  .boxExpenses,
+  .contentExpenses {
+    flex: none;
+    min-height: auto;
   }
 
   .contentExpenses {
@@ -293,10 +291,6 @@ const GlobalStyles = createGlobalStyle`
 
   .modalOverlay {
     padding: 1.5rem;
-  }
-
-  #btnAddExpense {
-    align-self: stretch;
   }
  }
 `;
