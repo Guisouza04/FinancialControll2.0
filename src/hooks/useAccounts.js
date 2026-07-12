@@ -50,12 +50,18 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
   // Adicionar conta
   const addAccount = async (accountData) => {
     try {
+      // `tipo` da página é o padrão, mas o modal pode enviar outro tipo de
+      // finança em `accountData` — nesse caso ele prevalece.
       const createdAccount = await financeService.createAccount({
-        ...accountData,
         tipo,
+        ...accountData,
       });
       const transformedAccount = transformAccount(createdAccount);
-      setAccounts((prev) => [...prev, transformedAccount]);
+      // Só entra na lista atual se for do mesmo tipo da página (senão a conta
+      // pertence a outra seção — Contas/Investimentos/Opcionais).
+      if (Number(transformedAccount.tipo) === Number(tipo)) {
+        setAccounts((prev) => [...prev, transformedAccount]);
+      }
       return { success: true, data: transformedAccount };
     } catch (err) {
       console.error("Erro ao adicionar conta:", err);
@@ -70,15 +76,19 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
   const updateAccount = async (id, accountData) => {
     try {
       const updatedAccount = await financeService.updateAccount(id, {
-        ...accountData,
         tipo,
+        ...accountData,
       });
       const transformedAccount = transformAccount(updatedAccount);
-      setAccounts((prev) =>
-        prev.map((account) =>
+      setAccounts((prev) => {
+        // Se o tipo passou a ser diferente da página, sai desta lista.
+        if (Number(transformedAccount.tipo) !== Number(tipo)) {
+          return prev.filter((account) => account.id !== id);
+        }
+        return prev.map((account) =>
           account.id === id ? transformedAccount : account
-        )
-      );
+        );
+      });
       return { success: true, data: transformedAccount };
     } catch (err) {
       console.error("Erro ao atualizar conta:", err);

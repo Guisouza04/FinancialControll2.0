@@ -11,8 +11,11 @@ import { ModalContent } from "./styles";
 import { ModalTitle } from "./styles";
 import { ModalText } from "./styles";
 import { ModalButtons } from "./styles";
+import RequiredField from "../../components/RequiredField";
+import { useToast } from "../../context/toast";
 
 function Config() {
+  const toast = useToast();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
@@ -42,11 +45,11 @@ function Config() {
 
   const confirmChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmNewPassword) {
-      alert("Por favor, preencha todos os campos!");
+      toast.warning("Por favor, preencha todos os campos!");
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      alert("As novas senhas não coincidem!");
+      toast.warning("As novas senhas não coincidem!");
       return;
     }
     try {
@@ -58,10 +61,10 @@ function Config() {
       setOldPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      alert("Senha alterada com sucesso!");
+      toast.success("Senha alterada com sucesso!");
     } catch (err) {
       console.error("Erro ao alterar senha:", err);
-      alert(
+      toast.error(
         err.response?.data?.error ||
           "Erro ao alterar a senha. Tente novamente."
       );
@@ -200,24 +203,30 @@ function Config() {
                 marginBottom: "1.5rem",
               }}
             >
-              <input
-                type="password"
-                placeholder="Senha Antiga"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-              />
-              <input
-                type="password"
-                placeholder="Nova Senha"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-              <input
-                type="password"
-                placeholder="Confirmar Nova Senha"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-              />
+              <RequiredField>
+                <input
+                  type="password"
+                  placeholder="Senha Antiga"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+              </RequiredField>
+              <RequiredField>
+                <input
+                  type="password"
+                  placeholder="Nova Senha"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </RequiredField>
+              <RequiredField>
+                <input
+                  type="password"
+                  placeholder="Confirmar Nova Senha"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                />
+              </RequiredField>
             </div>
             <ModalButtons>
               <button className="button3" onClick={cancelChangePassword}>

@@ -11,8 +11,11 @@ import { ModalContent } from "./styles";
 import { ModalTitle } from "./styles";
 import { ModalText } from "./styles";
 import { ModalButtons } from "./styles";
+import RequiredField from "../../components/RequiredField";
+import { useToast } from "../../context/toast";
 
 function Dados() {
+  const toast = useToast();
   const [showDadosModal, setShowDadosModal] = useState(false);
   const [salary, setSalary] = useState("");
   const [paymentDate, setPaymentDate] = useState("Todo 5º dia útil");
@@ -40,17 +43,17 @@ function Dados() {
 
   const confirmPerfil = async () => {
     if (!perfilData.nome || !perfilData.email) {
-      alert("Por favor, preencha nome e e-mail!");
+      toast.warning("Por favor, preencha nome e e-mail!");
       return;
     }
     try {
       await api.put("/security/profile", perfilData);
       setShowPerfilModal(false);
       setPerfilData({ nome: "", apelido: "", email: "" });
-      alert("Dados salvos com sucesso!");
+      toast.success("Dados salvos com sucesso!");
     } catch (err) {
       console.error("Erro ao salvar perfil:", err);
-      alert(
+      toast.error(
         err.response?.data?.error || "Erro ao salvar os dados. Tente novamente."
       );
     }
@@ -63,11 +66,11 @@ function Dados() {
 
   const confirmDados = async () => {
     if (!salary) {
-      alert("Por favor, preencha o campo de salário!");
+      toast.warning("Por favor, preencha o campo de salário!");
       return;
     }
     if (paymentDate === "Personalizado" && !customPeriod) {
-      alert("Por favor, preencha o período de pagamento personalizado!");
+      toast.warning("Por favor, preencha o período de pagamento personalizado!");
       return;
     }
     try {
@@ -80,10 +83,10 @@ function Dados() {
       setSalary("");
       setPaymentDate("Todo 5º dia útil");
       setCustomPeriod("");
-      alert("Dados salvos com sucesso!");
+      toast.success("Dados salvos com sucesso!");
     } catch (err) {
       console.error("Erro ao salvar dados:", err);
-      alert(
+      toast.error(
         err.response?.data?.error || "Erro ao salvar os dados. Tente novamente."
       );
     }
@@ -190,13 +193,15 @@ function Dados() {
                 marginBottom: "1.5rem",
               }}
             >
-              <input
-                type="text"
-                name="nome"
-                placeholder="Seu nome completo"
-                value={perfilData.nome}
-                onChange={handlePerfilChange}
-              />
+              <RequiredField>
+                <input
+                  type="text"
+                  name="nome"
+                  placeholder="Seu nome completo"
+                  value={perfilData.nome}
+                  onChange={handlePerfilChange}
+                />
+              </RequiredField>
               <input
                 type="text"
                 name="apelido"
@@ -204,13 +209,15 @@ function Dados() {
                 value={perfilData.apelido}
                 onChange={handlePerfilChange}
               />
-              <input
-                type="email"
-                name="email"
-                placeholder="Seu melhor E-mail"
-                value={perfilData.email}
-                onChange={handlePerfilChange}
-              />
+              <RequiredField>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Seu melhor E-mail"
+                  value={perfilData.email}
+                  onChange={handlePerfilChange}
+                />
+              </RequiredField>
             </div>
             <ModalButtons>
               <button className="button3" onClick={cancelPerfil}>
@@ -240,12 +247,14 @@ function Dados() {
                 marginBottom: "1.5rem",
               }}
             >
-              <input
-                type="number"
-                placeholder="Salário"
-                value={salary}
-                onChange={(e) => setSalary(e.target.value)}
-              />
+              <RequiredField>
+                <input
+                  type="number"
+                  placeholder="Salário"
+                  value={salary}
+                  onChange={(e) => setSalary(e.target.value)}
+                />
+              </RequiredField>
               <Select
                 value={paymentDate}
                 onChange={setPaymentDate}
@@ -258,12 +267,14 @@ function Dados() {
               />
 
               {paymentDate === "Personalizado" && (
-                <input
-                  type="text"
-                  placeholder="Qual a sua data de Pagamento?"
-                  value={customPeriod}
-                  onChange={(e) => setCustomPeriod(e.target.value)}
-                />
+                <RequiredField>
+                  <input
+                    type="text"
+                    placeholder="Qual a sua data de Pagamento?"
+                    value={customPeriod}
+                    onChange={(e) => setCustomPeriod(e.target.value)}
+                  />
+                </RequiredField>
               )}
             </div>
             <ModalButtons>

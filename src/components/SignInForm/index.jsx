@@ -3,6 +3,7 @@ import api from "../../services/api";
 import logoGoogle from "../../assets/IconGoogle.svg";
 import logoApple from "../../assets/IconApple.svg";
 import logoMicrosoft from "../../assets/IconMicrosoft.svg";
+import RequiredField from "../RequiredField";
 import * as S from "./styles";
 const {
   Title,
@@ -110,44 +111,52 @@ const SignUpForm = () => {
         </SocialLink>
       </SocialContainer>
       <Text>ou use seu e-mail para registro</Text>
-      <Input
-        type="text"
-        pattern="\d{11}"
-        maxLength={11}
-        name="CPFuser"
-        placeholder="Seu CPF somente números*"
-        value={CPF}
-        onChange={handleChange}
-        disabled={loading}
-        required
-      />
-      <Input
-        type="email"
-        name="email"
-        placeholder="Seu melhor Email*"
-        value={email}
-        onChange={handleChange}
-        disabled={loading}
-        required
-      />
-      <Input
-        type="password"
-        name="password"
-        placeholder="Digite uma senha*"
-        value={password}
-        onChange={handleChange}
-        disabled={loading}
-        required
-      />
-      <Input
-        type="password"
-        name="confirmPassword"
-        placeholder="Confirmar Senha*"
-        value={confirmPassword}
-        onChange={handleChange}
-        disabled={loading}
-        required
-      />
+      <RequiredField>
+        <Input
+          type="text"
+          pattern="\d{11}"
+          maxLength={11}
+          name="CPFuser"
+          placeholder="Seu CPF somente números"
+          value={CPF}
+          onChange={handleChange}
+          disabled={loading}
+          required
+        />
+      </RequiredField>
+      <RequiredField>
+        <Input
+          type="email"
+          name="email"
+          placeholder="Seu melhor Email"
+          value={email}
+          onChange={handleChange}
+          disabled={loading}
+          required
+        />
+      </RequiredField>
+      <RequiredField>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite uma senha"
+          value={password}
+          onChange={handleChange}
+          disabled={loading}
+          required
+        />
+      </RequiredField>
+      <RequiredField>
+        <Input
+          type="password"
+          name="confirmPassword"
+          placeholder="Confirmar Senha"
+          value={confirmPassword}
+          onChange={handleChange}
+          disabled={loading}
+          required
+        />
+      </RequiredField>
       {error && (
         <Paragraph style={{ color: "red", fontSize: "14px" }}>
           {error}

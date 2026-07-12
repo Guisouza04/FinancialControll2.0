@@ -143,6 +143,7 @@ const GlobalStyles = createGlobalStyle`
     bottom: 0;
     background-color: rgba(10, 0, 20, 0.55);
     backdrop-filter: blur(6px);
+    border-radius: inherit;
     -webkit-backdrop-filter: blur(6px);
     display: flex;
     justify-content: center;

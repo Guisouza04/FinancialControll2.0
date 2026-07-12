@@ -3,6 +3,7 @@ import api from "../../services/api";
 import logoGoogle from "../../assets/IconGoogle.svg";
 import logoApple from "../../assets/IconApple.svg";
 import logoMicrosoft from "../../assets/IconMicrosoft.svg";
+import RequiredField from "../RequiredField";
 import * as S from "./styles";
 const {
   Title,
@@ -85,22 +86,26 @@ const LoginForm = () => {
         </SocialLink>
       </SocialContainer>
       <Text>ou use sua conta</Text>
-      <Input
-        type="text"
-        name="username"
-        placeholder="Usuário"
-        value={username}
-        onChange={handleChange}
-        disabled={loading}
-      />
-      <Input
-        type="password"
-        name="password"
-        placeholder="Digite sua senha"
-        value={password}
-        onChange={handleChange}
-        disabled={loading}
-      />
+      <RequiredField>
+        <Input
+          type="text"
+          name="username"
+          placeholder="Usuário"
+          value={username}
+          onChange={handleChange}
+          disabled={loading}
+        />
+      </RequiredField>
+      <RequiredField>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={handleChange}
+          disabled={loading}
+        />
+      </RequiredField>
       {error && (
         <Paragraph styles={{ color: "red", fontSize: "14px" }}>
           {error}

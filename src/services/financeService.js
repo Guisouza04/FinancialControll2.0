@@ -102,6 +102,8 @@ export const transformAccount = (item) => ({
   durationMonths: item.qtd_parcelas,
   tipo: item.tipo,
   contaPaga: item.conta_paga || "N",
+  // True = despesa já inclusa na fatura de um cartão (não soma no total a pagar).
+  naFatura: Boolean(item.na_fatura),
   // Competências pagas ("YYYY-MM") — status por parcela (modelo A). Quando o
   // backend ainda não envia, fica null e a UI cai no `contaPaga` legado.
   pagamentos: Array.isArray(item.pagamentos) ? item.pagamentos : null,
