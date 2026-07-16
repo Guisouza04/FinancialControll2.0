@@ -7,6 +7,7 @@ import Despesas from "./pages/Despesas";
 import Contas from "./pages/Contas";
 import Investments from "./pages/Investments";
 import Optional from "./pages/Optional";
+import ImportarExtrato from "./pages/ImportarExtrato";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/Private/PrivateRoute";
 
@@ -76,6 +77,15 @@ function App() {
           element={
             <PrivateRoute>
               <Optional />
+            </PrivateRoute>
+          }
+        />
+        {/* Importação de extrato (OFX) */}
+        <Route
+          path="/importar"
+          element={
+            <PrivateRoute>
+              <ImportarExtrato />
             </PrivateRoute>
           }
         />
