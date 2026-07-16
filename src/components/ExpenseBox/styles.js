@@ -155,6 +155,8 @@ export const FieldLabel = styled.label`
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-muted);
+  /* Sobrepõe o text-align: center herdado de .defaultModal (global). */
+  text-align: left;
 `;
 
 /* Linha de checkbox (ex.: "já está na fatura do cartão"), largura toda. */
@@ -342,6 +344,35 @@ export const FaturaTag = styled.span`
   border: 1px solid var(--glass-border);
   vertical-align: middle;
   white-space: nowrap;
+`;
+
+/* Chips de tag (somente leitura) exibidos na coluna Nome da tabela. */
+export const TagList = styled.span`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+`;
+
+/* Pílula colorida da tag. A cor vem por prop $color. Fundo translúcido para
+   legibilidade sobre a superfície escura; borda/texto na cor cheia. */
+export const TagChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  background: ${({ $color }) => $color};
+  white-space: nowrap;
+`;
+
+/* Área de tags dentro do modal (largura toda, abaixo do label da seção). */
+export const TagField = styled.div`
+  grid-column: 1 / -1;
 `;
 
 export const PaginationContainer = styled.div`

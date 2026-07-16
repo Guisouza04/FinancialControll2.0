@@ -50,9 +50,9 @@ const LoginForm = () => {
       if (response.data.success) {
         localStorage.setItem("authToken", response.data.authToken);
         setSuccess("Login realizado com sucesso!");
-        // Mantém loading ativo durante o redirecionamento.
+        // Mantém loading ativo durante o redirecionamento para o Dashboard.
         setTimeout(() => {
-          window.location.href = "/Dados";
+          window.location.href = "/";
         }, 1000);
       } else {
         setError("Usuário ou senha incorretos.");

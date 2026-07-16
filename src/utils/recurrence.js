@@ -218,6 +218,54 @@ export const isActiveInPeriod = (account, filterYear, filterMonth) => {
 };
 
 /**
+ * A conta está ativa no período (ano+mês), tratando recorrência E legado.
+ *
+ * Espelha a lógica de filtro do `ExpenseBox` (sem o filtro de status), para que
+ * o Dashboard some exatamente os mesmos lançamentos que aparecem nas telas de
+ * despesa. `filterYear`/`filterMonth` são strings ("" = sem filtro no campo).
+ */
+export const accountActiveInPeriod = (account, filterYear, filterMonth) => {
+  // Contas com recorrência usam a regra (UNICA/MENSAL/ANUAL).
+  if (account.recorrencia) {
+    return isActiveInPeriod(account, filterYear, filterMonth);
+  }
+
+  // Legado: janela de meses consecutivos a partir do creationMonth.
+  if (!account.creationMonth) return true;
+  const [startYear, startMonth] = account.creationMonth.split("-").map(Number);
+  const startDate = new Date(startYear, startMonth - 1);
+  const endDate = new Date(startYear, startMonth - 1);
+  endDate.setMonth(endDate.getMonth() + (account.durationMonths || 1));
+
+  const fy = filterYear ? parseInt(filterYear, 10) : null;
+  const fm = filterMonth ? parseInt(filterMonth, 10) : null;
+
+  if (fy && fm) {
+    const filterDate = new Date(fy, fm - 1);
+    return filterDate >= startDate && filterDate < endDate;
+  }
+  if (fy) return startYear <= fy && endDate.getFullYear() >= fy;
+  if (fm) {
+    for (let i = 0; i < (account.durationMonths || 1); i++) {
+      const d = new Date(startYear, startMonth - 1 + i);
+      if (d.getMonth() + 1 === fm) return true;
+    }
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Soma o valor das contas ativas no período. `naFatura` é apenas um marcador
+ * (compra de cartão) e NÃO exclui do total — a antiga regra de "não somar" foi
+ * aposentada quando passamos a itemizar as compras de cartão via importação.
+ */
+export const sumActiveInPeriod = (accounts, filterYear, filterMonth) =>
+  (accounts || [])
+    .filter((a) => accountActiveInPeriod(a, filterYear, filterMonth))
+    .reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+
+/**
  * Competência ("YYYY-MM") da ocorrência exibida no período filtrado.
  *
  * É a chave usada para marcar/consultar o pagamento de UMA parcela específica

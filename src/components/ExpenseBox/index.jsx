@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useAccounts } from "../../hooks/useAccounts";
+import { useTags } from "../../hooks/useTags";
 import { Container } from "./styles";
 import { Title } from "./styles";
 import { Form } from "./styles";
@@ -19,6 +20,9 @@ import { CheckboxField } from "./styles";
 import { SectionLabel } from "./styles";
 import { TotalBar } from "./styles";
 import { FaturaTag } from "./styles";
+import { TagList } from "./styles";
+import { TagChip } from "./styles";
+import { TagField } from "./styles";
 import { ModalButtons } from "./styles";
 import { ModalTitle } from "./styles";
 import { PaginationContainer } from "./styles";
@@ -44,6 +48,7 @@ import {
 } from "../../utils/recurrence";
 import Select from "../Select";
 import RequiredField from "../RequiredField";
+import TagPicker from "../TagPicker";
 import { useToast } from "../../context/toast";
 import { useConfirm } from "../../context/confirm";
 
@@ -67,20 +72,26 @@ const ExpenseBox = ({ tipo }) => {
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [filterStatus, setFilterStatus] = useState(""); // "" | "S" | "N"
+  const [filterTagId, setFilterTagId] = useState(""); // "" = todas as tags
 
   const {
     accounts,
     loading,
+    fetchAccounts,
     addAccount,
     updateAccount,
     deleteAccount,
     togglePaymentStatus,
   } = useAccounts(tipo, filterYear, filterMonth);
 
+  // Tags do usuário (globais, não por tipo) — usadas no filtro e no modal.
+  const { tags, addTag, removeTag } = useTags();
+
   // Formulário do modal (add e edição compartilham o mesmo estado)
   const [editId, setEditId] = useState(null); // null = adicionando
   const [formTipo, setFormTipo] = useState(String(tipo)); // tipo de finança escolhido
   const [naFatura, setNaFatura] = useState(false); // já incluída na fatura de um cartão
+  const [selectedTagIds, setSelectedTagIds] = useState([]); // tags do lançamento
   const [name, setName] = useState("");
   const [valueDigits, setValueDigits] = useState("");
   const [recorrencia, setRecorrencia] = useState(RECURRENCE.MENSAL);
@@ -178,6 +189,7 @@ const ExpenseBox = ({ tipo }) => {
   const resetForm = () => {
     setFormTipo(String(tipo));
     setNaFatura(false);
+    setSelectedTagIds([]);
     setName("");
     setValueDigits("");
     setRecorrencia(RECURRENCE.MENSAL);
@@ -199,6 +211,9 @@ const ExpenseBox = ({ tipo }) => {
     const d = deriveRecurrenceForm(account);
     setFormTipo(String(account.tipo ?? tipo));
     setNaFatura(Boolean(account.naFatura));
+    setSelectedTagIds(
+      Array.isArray(account.tags) ? account.tags.map((t) => t.id) : []
+    );
     setName(account.name);
     setValueDigits(reaisToDigits(account.value));
     setRecorrencia(d.recorrencia);
@@ -253,7 +268,10 @@ const ExpenseBox = ({ tipo }) => {
       de_conta: name,
       vl_conta: digitsToApiValue(valueDigits),
       tipo: chosenTipo,
+      // Marcador de compra de cartão (💳) — vale para qualquer tipo.
       na_fatura: naFatura,
+      // Conjunto completo de tags do lançamento (backend substitui, não faz delta).
+      tag_ids: selectedTagIds,
       ...recurrence,
     };
 
@@ -336,6 +354,32 @@ const ExpenseBox = ({ tipo }) => {
     setFilterMonth(currentMonth);
   };
 
+  // Alterna a seleção de uma tag no formulário do modal.
+  const toggleTag = (id) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+    );
+  };
+
+  // Remove a tag globalmente e limpa a seleção atual, se aplicável.
+  const handleRemoveTag = async (id) => {
+    const result = await removeTag(id);
+    if (result.success) {
+      setSelectedTagIds((prev) => prev.filter((t) => t !== id));
+      if (String(filterTagId) === String(id)) setFilterTagId("");
+      // Recarrega os lançamentos para os chips da tag excluída sumirem da tabela
+      // (a exclusão só removeu as ligações no backend).
+      fetchAccounts();
+    }
+    return result;
+  };
+
+  // Opções do filtro por tag: "Todas as tags" + uma entrada por tag.
+  const tagFilterOptions = [
+    { value: "", label: "Todas as tags" },
+    ...tags.map((t) => ({ value: String(t.id), label: t.nome })),
+  ];
+
   // Navegação de período: avança/retrocede um mês, virando o ano quando passa
   // de dez/jan. Base no mês selecionado (ou no atual, se "Todos os meses").
   // Limitada à janela do seletor de ano (currentYear-5 .. +5).
@@ -393,6 +437,14 @@ const ExpenseBox = ({ tipo }) => {
       if (paid !== filterStatus) return false;
     }
 
+    // Filtro por tag — mostra só lançamentos que têm a tag selecionada.
+    if (filterTagId) {
+      const has = (account.tags || []).some(
+        (t) => String(t.id) === String(filterTagId)
+      );
+      if (!has) return false;
+    }
+
     // Contas com recorrência usam a regra (UNICA/MENSAL/ANUAL).
     if (account.recorrencia) {
       return isActiveInPeriod(account, filterYear, filterMonth);
@@ -432,12 +484,11 @@ const ExpenseBox = ({ tipo }) => {
     return true;
   });
 
-  // Total do período: soma o valor das ocorrências visíveis, EXCLUINDO as que
-  // já estão numa fatura de cartão (senão contariam em dobro com a linha da
-  // fatura). O que está em fatura é somado à parte, só como informação.
-  const totalPayable = filteredAccounts
-    .filter((a) => !a.naFatura)
-    .reduce((sum, a) => sum + a.value, 0);
+  // Total do período: soma TODAS as ocorrências visíveis. `naFatura` é só um
+  // marcador (compra de cartão) e conta normalmente — a regra antiga de "não
+  // somar" foi aposentada com a itemização via importação de extrato.
+  const totalPayable = filteredAccounts.reduce((sum, a) => sum + a.value, 0);
+  // Quanto do total são compras de cartão (informativo — já incluído acima).
   const totalInFatura = filteredAccounts
     .filter((a) => a.naFatura)
     .reduce((sum, a) => sum + a.value, 0);
@@ -514,6 +565,12 @@ const ExpenseBox = ({ tipo }) => {
             options={statusOptions}
             placeholder="Todas"
           />
+          <Select
+            value={filterTagId}
+            onChange={setFilterTagId}
+            options={tagFilterOptions}
+            placeholder="Todas as tags"
+          />
           <button className="button2" onClick={handleCurrentDate}>
             {filterYear !== currentYear ? "Data Atual" : "Mês Atual"}
           </button>
@@ -542,9 +599,27 @@ const ExpenseBox = ({ tipo }) => {
                   <Td className="name-column">
                     {account.name}
                     {account.naFatura && (
-                      <FaturaTag title="Já está na fatura de um cartão — não soma no total a pagar">
-                        💳 na fatura
+                      <FaturaTag
+                        title={
+                          account.dataCompra
+                            ? `Compra de cartão em ${account.dataCompra
+                                .split("-")
+                                .reverse()
+                                .join("/")}`
+                            : "Compra de cartão"
+                        }
+                      >
+                        💳 cartão
                       </FaturaTag>
+                    )}
+                    {account.tags && account.tags.length > 0 && (
+                      <TagList>
+                        {account.tags.map((t) => (
+                          <TagChip key={t.id} $color={t.cor} title={t.nome}>
+                            {t.nome}
+                          </TagChip>
+                        ))}
+                      </TagList>
                     )}
                   </Td>
                   <Td className="value-column">{formatBRL(account.value)}</Td>
@@ -595,8 +670,7 @@ const ExpenseBox = ({ tipo }) => {
         <span className="total-value">{formatBRL(totalPayable)}</span>
         {totalInFatura > 0 && (
           <span className="total-hint">
-            + {formatBRL(totalInFatura)} em faturas de cartão (já contabilizados
-            na linha da fatura)
+            inclui {formatBRL(totalInFatura)} em compras de cartão 💳
           </span>
         )}
       </TotalBar>
@@ -673,9 +747,19 @@ const ExpenseBox = ({ tipo }) => {
                     checked={naFatura}
                     onChange={(e) => setNaFatura(e.target.checked)}
                   />
-                  Esta conta já está dentro da fatura de um cartão (não soma no
-                  total a pagar)
+                  É uma compra de cartão de crédito (marca com 💳)
                 </CheckboxField>
+
+                <SectionLabel>Tags</SectionLabel>
+                <TagField>
+                  <TagPicker
+                    tags={tags}
+                    selectedIds={selectedTagIds}
+                    onToggle={toggleTag}
+                    onCreate={addTag}
+                    onDelete={handleRemoveTag}
+                  />
+                </TagField>
 
                 <SectionLabel>Período</SectionLabel>
 

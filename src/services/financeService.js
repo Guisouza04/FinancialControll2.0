@@ -87,6 +87,79 @@ const financeService = {
     // Tolera ambos os formatos para manter consistência com create/update.
     return response.data?.data ?? response.data;
   },
+
+  /**
+   * Envia o conteúdo textual de um arquivo OFX e recebe as transações
+   * interpretadas para a tela de revisão (nada é gravado ainda).
+   * @param {string} content - texto do arquivo .ofx
+   * @returns {Promise<{ moeda: string|null, transacoes: Array }>}
+   */
+  async importPreview(content) {
+    const response = await api.post("/financas/import/preview", { content });
+    return response.data;
+  },
+
+  /**
+   * Grava as transações confirmadas na revisão como lançamentos únicos.
+   * @param {Array<{de_conta, vl_conta, tipo, data}>} items
+   * @returns {Promise<{ success: boolean, created: number }>}
+   */
+  async importCommit(items) {
+    const response = await api.post("/financas/import/commit", { items });
+    return response.data;
+  },
+
+  /**
+   * Lista as tags do usuário (categorização de lançamentos).
+   * @returns {Promise<Array<{ id:number, nome:string, cor:string }>>}
+   */
+  async fetchTags() {
+    const response = await api.get("/financas/tags");
+    return response.data;
+  },
+
+  /**
+   * Cria uma tag.
+   * @param {{ nome:string, cor:string }} tagData - cor em hex "#RRGGBB"
+   * @returns {Promise<{ id:number, nome:string, cor:string }>}
+   */
+  async createTag(tagData) {
+    const response = await api.post("/financas/tags", tagData);
+    return response.data;
+  },
+
+  /**
+   * Atualiza uma tag (nome e/ou cor).
+   * @param {number} id
+   * @param {{ nome:string, cor:string }} tagData
+   */
+  async updateTag(id, tagData) {
+    const response = await api.put(`/financas/tags/${id}`, tagData);
+    return response.data;
+  },
+
+  /**
+   * Exclui uma tag. As ligações com lançamentos somem (os lançamentos ficam).
+   * @param {number} id
+   */
+  async deleteTag(id) {
+    await api.delete(`/financas/tags/${id}`);
+  },
+
+  /**
+   * Busca o salário configurado do usuário — base para a divisão 60/20/10/10
+   * do Dashboard.
+   * @returns {Promise<{ salario: number|null, periodoPagamento: string|null }>}
+   */
+  async fetchSalary() {
+    const response = await api.get("/financas/salary");
+    const salarioRaw = response.data?.salario;
+    return {
+      // Backend serializa como string (ex.: "3500.00") ou null.
+      salario: salarioRaw != null ? parseFloat(salarioRaw) : null,
+      periodoPagamento: response.data?.periodo_pagamento ?? null,
+    };
+  },
 };
 
 /**
@@ -102,11 +175,15 @@ export const transformAccount = (item) => ({
   durationMonths: item.qtd_parcelas,
   tipo: item.tipo,
   contaPaga: item.conta_paga || "N",
-  // True = despesa já inclusa na fatura de um cartão (não soma no total a pagar).
+  // True = compra de cartão (importada ou marcada). Hoje é só marcador (💳);
+  // conta normalmente no total. `dataCompra` = data original da compra.
   naFatura: Boolean(item.na_fatura),
+  dataCompra: item.data_compra || null,
   // Competências pagas ("YYYY-MM") — status por parcela (modelo A). Quando o
   // backend ainda não envia, fica null e a UI cai no `contaPaga` legado.
   pagamentos: Array.isArray(item.pagamentos) ? item.pagamentos : null,
+  // Tags associadas [{ id, nome, cor }]. Categorização livre do usuário.
+  tags: Array.isArray(item.tags) ? item.tags : [],
   // Campos de recorrência (backend em alinhamento). Ausentes em registros legados.
   recorrencia: item.recorrencia || null,
   diaVencimento: item.dia_vencimento ?? null,

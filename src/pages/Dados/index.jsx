@@ -13,11 +13,17 @@ import { ModalText } from "./styles";
 import { ModalButtons } from "./styles";
 import RequiredField from "../../components/RequiredField";
 import { useToast } from "../../context/toast";
+import {
+  formatDigitsAsBRL,
+  digitsToApiValue,
+  hasPositiveValue,
+} from "../../utils/currency";
 
 function Dados() {
   const toast = useToast();
   const [showDadosModal, setShowDadosModal] = useState(false);
-  const [salary, setSalary] = useState("");
+  // String de dígitos (centavos) — mesma máscara BRL do ExpenseBox.
+  const [salaryDigits, setSalaryDigits] = useState("");
   const [paymentDate, setPaymentDate] = useState("Todo 5º dia útil");
   const [customPeriod, setCustomPeriod] = useState("");
 
@@ -65,7 +71,7 @@ function Dados() {
   };
 
   const confirmDados = async () => {
-    if (!salary) {
+    if (!hasPositiveValue(salaryDigits)) {
       toast.warning("Por favor, preencha o campo de salário!");
       return;
     }
@@ -75,12 +81,13 @@ function Dados() {
     }
     try {
       await api.post("/financas/salary", {
-        salario: salary,
+        // Backend espera string com ponto decimal ("3500.00").
+        salario: digitsToApiValue(salaryDigits),
         periodo_pagamento:
           paymentDate === "Personalizado" ? customPeriod : paymentDate,
       });
       setShowDadosModal(false);
-      setSalary("");
+      setSalaryDigits("");
       setPaymentDate("Todo 5º dia útil");
       setCustomPeriod("");
       toast.success("Dados salvos com sucesso!");
@@ -94,7 +101,7 @@ function Dados() {
 
   const cancelDados = () => {
     setShowDadosModal(false);
-    setSalary("");
+    setSalaryDigits("");
     setPaymentDate("Todo 5º dia útil");
     setCustomPeriod("");
   };
@@ -249,10 +256,13 @@ function Dados() {
             >
               <RequiredField>
                 <input
-                  type="number"
-                  placeholder="Salário"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
+                  value={formatDigitsAsBRL(salaryDigits)}
+                  onChange={(e) =>
+                    setSalaryDigits(e.target.value.replace(/\D/g, ""))
+                  }
                 />
               </RequiredField>
               <Select

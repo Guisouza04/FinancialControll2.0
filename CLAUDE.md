@@ -25,12 +25,13 @@ All routes except `/Login` are wrapped in `PrivateRoute`.
 
 | Route | Page | Description |
 |---|---|---|
-| `/` | Home | Dashboard — só renderiza o Nav |
+| `/` | Home | **Dashboard** — resumo financeiro: KPIs, medidores da divisão 60/20/10/10 e donut de distribuição |
 | `/Login` | TelaLogin | Login/Cadastro (público) |
 | `/Financas` | Despesas (componente) | Hub "Finanças": Contas, Investimentos, Opcionais |
 | `/Contas` | Contas | `ExpenseBox tipo={1}` |
 | `/Investments` | Investments | `ExpenseBox tipo={2}` |
 | `/Optional` | Optional | `ExpenseBox tipo={3}` |
+| `/importar` | ImportarExtrato | Importa extrato OFX de cartão com tela de revisão manual |
 | `/Dados` | Dados | Hub: modal de Perfil, página Settings, modal de Salário |
 | `/Settings` | Settings | Alterar senha, logout |
 | `*` | NotFound | 404 |
@@ -78,6 +79,13 @@ createAccount(accountData)             // POST /financas/create
 updateAccount(id, accountData)         // PUT /financas/update/{id}
 deleteAccount(id)                      // DELETE /financas/delete/{id}
 updatePaymentStatus(id, competencia, status)  // PUT /financas/payment-status/{id} — status POR parcela
+fetchSalary()                          // GET /financas/salary → { salario:number|null, periodoPagamento }
+importPreview(content)                 // POST /financas/import/preview → { moeda, transacoes[] } (não grava)
+importCommit(items)                    // POST /financas/import/commit → { success, created } (grava lançamentos ÚNICOS)
+fetchTags()                            // GET /financas/tags → [{ id, nome, cor }]
+createTag({ nome, cor })               // POST /financas/tags → tag criada (cor hex "#RRGGBB")
+updateTag(id, { nome, cor })           // PUT /financas/tags/{id}
+deleteTag(id)                          // DELETE /financas/tags/{id} (some das ligações; lançamentos ficam)
 transformAccount(item)                 // Helper: normaliza resposta da API
 ```
 
@@ -91,7 +99,7 @@ transformAccount(item)                 // Helper: normaliza resposta da API
 **Shape transformado (frontend):**
 ```json
 { "id": 1, "name": "Nome", "value": 150.0, "creationMonth": "2025-01", "durationMonths": 12, "tipo": 1, "contaPaga": "S",
-  "pagamentos": ["2026-08", "2026-10"],
+  "pagamentos": ["2026-08", "2026-10"], "tags": [{ "id": 3, "nome": "Mercado", "cor": "#199e70" }],
   "recorrencia": "MENSAL", "diaVencimento": 10, "dataInicio": "2026-07-10", "dataFim": "2026-12-10" }
 ```
 
@@ -99,8 +107,9 @@ transformAccount(item)                 // Helper: normaliza resposta da API
 ```json
 { "de_conta": "string", "vl_conta": "string", "tipo": number,
   "recorrencia": "UNICA" | "MENSAL" | "ANUAL", "dia_vencimento": number, "data_inicio": "YYYY-MM-DD", "data_fim": "YYYY-MM-DD",
-  "qtd_parcelas": number }
+  "qtd_parcelas": number, "tag_ids": number[] }
 ```
+> **`tag_ids`** é o conjunto **completo** de tags do lançamento (o backend substitui, não faz merge). IDs de tags de outro usuário são ignorados.
 
 > **`vl_conta`** é enviado como string com ponto decimal (`"1234.56"`); a máscara BRL no input é só de exibição (`src/utils/currency.js`).
 
@@ -120,6 +129,12 @@ Campos gerados por `src/utils/recurrence.js` no create/update. **O backend persi
 
 > **Filtro por período é feito no frontend.** O backend (`GET /financas/{tipo}`) retorna **todos** os lançamentos do usuário para o tipo (não filtra mais por `dt_create` — isso escondia contas recorrentes fora do mês de criação).
 
+**Helpers de período reutilizáveis (`src/utils/recurrence.js`):**
+- `accountActiveInPeriod(account, ano, mes)` — encapsula recorrência + legado (mesma lógica de filtro do ExpenseBox, sem o filtro de status).
+- `sumActiveInPeriod(accounts, ano, mes)` — soma o valor de **todas** as contas ativas no período. Usado pelo Dashboard.
+
+> **`naFatura` é só um MARCADOR (💳) de compra de cartão** — **não** exclui do total (a regra antiga de "não somar", que evitava dupla contagem com uma fatura-lump, foi aposentada quando passamos a itemizar as compras via importação de extrato). O checkbox no modal vale para qualquer tipo. Compras de cartão têm `dataCompra` (data original) separada do **período do lançamento**, que é o **mês do vencimento da fatura** (quando entra no orçamento).
+
 ### Pagamento por competência (status por parcela)
 
 Uma conta recorrente é **1 linha** expandida visualmente em vários meses. Por isso o pagamento **não** pode ser um campo único na conta — é rastreado **por competência** (`"YYYY-MM"`).
@@ -129,6 +144,14 @@ Uma conta recorrente é **1 linha** expandida visualmente em vários meses. Por 
 - **Frontend (`src/utils/recurrence.js`):** `occurrenceCompetencia(account, ano, mes)` deriva a competência da parcela exibida (UNICA→mês de início; ANUAL→ano do filtro + mês de início; MENSAL/legado→ano+mês do filtro, `null` se sem mês). `isPaidInPeriod(...)` checa se a competência está em `pagamentos`.
 - **UX:** com filtro "Todos os meses" a competência de uma conta MENSAL é ambígua → o toggle bloqueia e pede para selecionar um mês.
 - **Compatibilidade:** se `pagamentos` vier ausente (`null`), a UI cai no `contaPaga` único legado.
+
+### Tags (categorização de lançamentos)
+
+Rótulos livres do usuário (ex.: "Mercado", "Combustível") para categorizar lançamentos, **transversais ao `tipo`** — o `tipo` é o *plano/orçamento* (60/20/10/10), a tag é a *natureza do gasto*. Um lançamento pode ter **várias** tags (N:N).
+
+- **Modelo:** propriedade do **lançamento** (não da parcela) → valem para todas as ocorrências de um recorrente, sem a complexidade por-competência de `pagamentos`. Cada tag tem `cor` (hex) escolhida de uma paleta (`src/utils/tagColors.js`).
+- **Backend:** tabela `tags(id, user_id, nome, cor)` + associação `lancamento_tags(lancamento_id, tag_id)`. Nome único por usuário (case-insensitive). CRUD em `/financas/tags`. Create/update de lançamento aceitam `tag_ids` (conjunto completo). Migração `0007_tags`.
+- **Frontend:** `src/hooks/useTags.js` (busca 1x, expõe `addTag`/`editTag`/`removeTag`); `src/components/TagPicker` (seleção multi + criação inline com paleta + exclusão global com confirmação). O `ExpenseBox` usa o picker no modal, exibe chips na tabela e filtra por tag.
 
 ### `src/hooks/useAccounts.js`
 Custom hook usado por todas as páginas de despesas:
@@ -151,7 +174,8 @@ const { accounts, loading, error, fetchAccounts, addAccount, updateAccount, dele
 **Props:** `tipo` (1, 2 ou 3)
 
 **Funcionalidades:**
-- **Filtros:** Ano (input) + Mês (Select) + **Status** (Todas / Pagas / Pendentes). Default: mês e ano atuais.
+- **Filtros:** Ano (input) + Mês (Select) + **Status** (Todas / Pagas / Pendentes) + **Tag** (Todas as tags / uma tag). Default: mês e ano atuais.
+- **Tags:** chips coloridos na coluna Nome; no modal, um `TagPicker` seleciona/cria/exclui tags (ver seção *Tags*).
 - **Paginação:** itens por página **dinâmicos** — calculados pela altura disponível da tabela via `ResizeObserver` no `TableWrapper` (a tabela ocupa a altura da tela e enche de linhas).
 - **Tabela:** Nome | Valor (`R$ 1.234,56`) | Parcela (índice/total da ocorrência) | Status (verde "Paga" / vermelho "Pendente") | Ações. Layout de altura cheia (`flex` do `.frame` até o corpo) com cabeçalho fixo (`sticky`); scroll no `TableWrapper`.
 - **Ações:** Editar (✏️ → abre modal pré-preenchido: nome, valor e recorrência/período), Deletar com confirmação, Toggle de pagamento com confirmação
@@ -164,6 +188,29 @@ const { accounts, loading, error, fetchAccounts, addAccount, updateAccount, dele
 - Sem filtro: mostra todos
 
 ---
+
+## Dashboard (`src/pages/Home`)
+
+Tela inicial (`/`) — resumo financeiro do mês selecionado. Filtro de Mês/Ano local (default: atual); a divisão-alvo do salário é **60% Contas · 20% Investimentos · 10% Opcionais · 10% Metas**.
+
+- **Dados:** `useAccounts(1..4)` (busca cada tipo **uma vez**, sem filtro; a soma por período é client-side via `sumActiveInPeriod`) + `financeService.fetchSalary()`.
+- **Config `BUDGET`:** cada bucket tem `pct` e `kind` — `teto` (Contas, Opcionais: não pode passar → vermelho quando excede) vs `meta` (Investimentos, Metas: alvo a alcançar → verde ao atingir).
+- **Seções:** KPIs (salário, comprometido, saldo livre, % de contas) → **medidores** por bucket (gasto × limite, forma "razão vs. limite") → **donut** SVG da distribuição real + legenda Real × Plano.
+- **Paleta categórica** (validada p/ CVD/contraste na superfície roxa): Contas `#3987e5`, Investimentos `#199e70`, Opcionais `#c98500`, Metas `#d55181`. Cores de status são fixas e nunca reutilizadas como cor de série.
+- **Estado vazio:** sem salário configurado → aviso com link p/ `/dados` (medidores ficam sem limite; distribuição ainda funciona).
+
+## Importação de Extrato OFX (`src/pages/ImportarExtrato`)
+
+Rota `/importar` (card no hub de Finanças). Fluxo **stateless com revisão manual**:
+
+1. Usuário seleciona um `.ofx`. `readOfxText(file)` lê respeitando o charset do cabeçalho (OFX 1.x SGML costuma ser Windows-1252/Latin-1; 2.x é UTF-8) — ler tudo como UTF-8 corromperia acentos.
+2. `importPreview(content)` → backend faz o parse (`app/services/ofx.py`, sem lib externa) e devolve as transações **sem gravar**.
+3. Tela de revisão: cada linha tem checkbox + Data + Descrição + badge Débito/Crédito + Valor + Select de tipo. **Créditos (pagamentos/estornos) já vêm desmarcados**; tipo padrão = Conta. Há "aplicar tipo às selecionadas".
+4. Usuário informa o **vencimento da fatura** (`data_vencimento`, via `DatePicker` customizado) — o mês em que as compras entram no orçamento. `importCommit(items)` grava cada transação como **lançamento ÚNICO** (`recorrencia="UNICA"`) nesse mês, com `na_fatura=true` (marcador 💳) e `data_compra` = data original da compra (só informação).
+
+> **Duas datas:** `data_compra` (quando comprou, ex.: 30/06) ≠ período do lançamento (`data_inicio`/`data_fim` = mês do vencimento da fatura, ex.: agosto — onde conta no orçamento). Campo `data_compra` adicionado na migração `0005_data_compra`.
+> **Backend:** endpoints `POST /financas/import/{preview,commit}`. O conteúdo do arquivo é enviado como **texto no corpo** (não multipart) para não exigir `python-multipart`. Sem tabela de staging (por ora). Exemplo de teste: `FinancialControllBackend/samples/exemplo_fatura.ofx`.
+> **Dedup por FITID (migração `0006_fitid`):** cada lançamento importado guarda o `fitid` (id único da transação OFX). O `preview` marca `ja_importada=true` quando o FITID já existe (a UI traz a linha desmarcada com badge "já importada"); o `commit` **pula** FITIDs já gravados (ou repetidos no mesmo lote) e retorna `{ created, skipped }`. Transações **sem FITID** não são deduplicadas. Registros importados **antes** dessa migração não têm `fitid` → não são detectados (limpeza manual).
 
 ## Estilo Global (`src/styles/globalStyles.js`)
 
@@ -194,6 +241,7 @@ const { accounts, loading, error, fetchAccounts, addAccount, updateAccount, dele
 - **Endpoints:** Financeiros em `/financas/*`, autenticação em `/security/*`
 - **Sem estado global:** Não há Redux nem Context API — estado é local ou no `useAccounts` hook
 - **Imports de componentes:** Usar alias/nomes descritivos nas importações de styled components
+- **Controles nativos não estilizáveis são substituídos por componentes próprios (tema dark-glass):** `Select` (no lugar do `<select>`) e `DatePicker` (`src/components/DatePicker`, no lugar do `<input type="date">` — o calendário/popup nativo não é estilizável por CSS). Ambos: gatilho + popup, fecham no clique fora/Esc, `value`/`onChange` diretos.
 
 ---
 
