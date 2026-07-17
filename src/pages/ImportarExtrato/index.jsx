@@ -17,6 +17,7 @@ import {
   Toolbar,
   FileTag,
   BulkBar,
+  Required,
   TableWrapper,
   Table,
   MovBadge,
@@ -219,7 +220,7 @@ function ImportarExtrato() {
                   style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}
                   title="Mês em que a fatura é paga — as compras entram nesse mês do orçamento"
                 >
-                  Vencimento da fatura:
+                  Vencimento da fatura<Required>*</Required>:
                   <span style={{ width: "16rem" }}>
                     <DatePicker
                       value={dueDate}
@@ -302,7 +303,7 @@ function ImportarExtrato() {
               <button
                 className="button2"
                 onClick={handleCommit}
-                disabled={committing || !selected.length || !dueDate}
+                disabled={committing}
               >
                 {committing ? "Importando…" : "Importar selecionadas"}
               </button>

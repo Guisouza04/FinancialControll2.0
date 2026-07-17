@@ -108,6 +108,11 @@ export const BulkBar = styled.div`
   color: var(--text-muted);
 `;
 
+export const Required = styled.span`
+  color: #ff9d9d;
+  margin-left: 0.2rem;
+`;
+
 export const TableWrapper = styled.div`
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
