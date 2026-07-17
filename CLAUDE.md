@@ -212,6 +212,18 @@ Rota `/importar` (card no hub de Finanças). Fluxo **stateless com revisão manu
 > **Backend:** endpoints `POST /financas/import/{preview,commit}`. O conteúdo do arquivo é enviado como **texto no corpo** (não multipart) para não exigir `python-multipart`. Sem tabela de staging (por ora). Exemplo de teste: `FinancialControllBackend/samples/exemplo_fatura.ofx`.
 > **Dedup por FITID (migração `0006_fitid`):** cada lançamento importado guarda o `fitid` (id único da transação OFX). O `preview` marca `ja_importada=true` quando o FITID já existe (a UI traz a linha desmarcada com badge "já importada"); o `commit` **pula** FITIDs já gravados (ou repetidos no mesmo lote) e retorna `{ created, skipped }`. Transações **sem FITID** não são deduplicadas. Registros importados **antes** dessa migração não têm `fitid` → não são detectados (limpeza manual).
 
+## Toasts (`src/components/Toast`)
+
+Notificações globais. `ToastProvider` (montado no `main.jsx`) renderiza a fila; as telas só consomem `useToast()` (`src/context/toast.js` — context + hook isolados p/ não quebrar o Fast Refresh) e chamam `success`/`error`/`warning`/`info`/`show`/`dismiss`. Duração padrão: **4s** (`show(tipo, msg, { duration })`; `duration: 0` = fixo, sem barra).
+
+**As três regras abaixo valem para todo toast do sistema — a lógica é do provider, nenhuma tela precisa implementá-las:**
+
+1. **Barra de tempo:** `ToastProgress` na base do toast encolhe de 100% a 0 durante a duração (`scaleX` linear — roda no compositor, sem reflow por frame), na cor do tipo.
+2. **Dedupe com reset:** toasts são indexados por `tipo + mensagem` (`dedupeKey`, refs `idByKey`/`keyById` — refs, não state, para `show` consultar de forma síncrona). Reacionar a **mesma** condição reaproveita o toast já visível, reinicia o timer e remonta a barra (via `key={resetKey}`) em vez de empilhar cópias; se ele já estava saindo, a saída é cancelada e ele volta. Mensagens diferentes continuam empilhando.
+3. **Saída animada:** `slideOut` = `slideIn` invertido, mesma curva e duração (`TRANSITION_MS`, exportado de `styles.js` e compartilhado com o provider). `dismiss` marca `leaving` e só remove do DOM quando a animação termina.
+
+> **Ao testar animação de toast no navegador:** aba em segundo plano (`document.visibilityState === "hidden"`) congela animações CSS e estrangula timers — a barra aparece travada em `scaleX(1)` e as medições de tempo saem distorcidas. Meça com a aba visível.
+
 ## Estilo Global (`src/styles/globalStyles.js`)
 
 **Variáveis CSS (`:root`):**
