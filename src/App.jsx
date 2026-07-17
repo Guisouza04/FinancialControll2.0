@@ -7,6 +7,7 @@ import Despesas from "./pages/Despesas";
 import Contas from "./pages/Contas";
 import Investments from "./pages/Investments";
 import Optional from "./pages/Optional";
+import Metas from "./pages/Metas";
 import ImportarExtrato from "./pages/ImportarExtrato";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/Private/PrivateRoute";
@@ -77,6 +78,16 @@ function App() {
           element={
             <PrivateRoute>
               <Optional />
+            </PrivateRoute>
+          }
+        />
+        {/* Tela de Metas — path minúsculo: o Nav aponta para "/metas" e o
+            React Router diferencia maiúsculas de minúsculas. */}
+        <Route
+          path="/metas"
+          element={
+            <PrivateRoute>
+              <Metas />
             </PrivateRoute>
           }
         />

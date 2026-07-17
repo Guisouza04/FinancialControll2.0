@@ -40,6 +40,32 @@ const parseISO = (iso) => {
 };
 
 /**
+ * Total de ocorrências a partir dos campos do FORMULÁRIO (antes de salvar).
+ * Contraparte de `occurrenceCount`, que trabalha sobre uma conta já salva.
+ *
+ * `fimAno` é opcional: sem ele o fim fica no mesmo ano do início — como era
+ * antes de a meta poder atravessar o ano (ExpenseBox/QuickAddModal não passam).
+ */
+export const formOccurrenceCount = ({
+  recorrencia,
+  anos,
+  fimAno,
+  fimMes,
+  startYear,
+  startMonth,
+}) => {
+  if (recorrencia === RECURRENCE.UNICA) return 1;
+  if (recorrencia === RECURRENCE.ANUAL) return Math.max(parseInt(anos, 10) || 1, 1);
+
+  const sy = parseInt(startYear, 10);
+  const sm = parseInt(startMonth, 10);
+  const fy = parseInt(fimAno, 10) || sy;
+  const fm = parseInt(fimMes, 10);
+  if (!sy || !sm || !fm) return 0;
+  return Math.max(fy * 12 + fm - (sy * 12 + sm) + 1, 0);
+};
+
+/**
  * Valida os campos de recorrência do formulário.
  * @returns {string|null} mensagem de erro ou null se válido
  */
@@ -48,7 +74,9 @@ export const validateRecurrence = ({
   dia,
   mes,
   anos,
+  fimAno,
   fimMes,
+  startYear,
   startMonth,
 }) => {
   const d = parseInt(dia, 10);
@@ -63,7 +91,17 @@ export const validateRecurrence = ({
     const fm = parseInt(fimMes, 10);
     const sm = parseInt(startMonth, 10);
     if (!fm || fm < 1 || fm > 12) return "Selecione o mês final.";
-    if (fm < sm) return "O mês final deve ser igual ou posterior ao inicial.";
+
+    // Sem `fimAno` o fim é no ano do início (comportamento antigo) e basta
+    // comparar os meses; com ele, a comparação é ano+mês.
+    const sy = parseInt(startYear, 10);
+    const fy = parseInt(fimAno, 10);
+    if (fy && sy) {
+      if (fy * 12 + fm < sy * 12 + sm)
+        return "O fim da meta deve ser igual ou posterior ao início.";
+    } else if (fm < sm) {
+      return "O mês final deve ser igual ou posterior ao inicial.";
+    }
   }
 
   if (recorrencia === RECURRENCE.ANUAL) {
@@ -86,6 +124,7 @@ export const buildRecurrencePayload = ({
   dia,
   mes,
   anos,
+  fimAno,
   fimMes,
   startYear,
   startMonth,
@@ -108,12 +147,21 @@ export const buildRecurrencePayload = ({
   if (recorrencia === RECURRENCE.MENSAL) {
     const sm = parseInt(startMonth, 10);
     const fm = parseInt(fimMes, 10);
+    // Sem `fimAno`, o fim fica no ano do início (comportamento das telas de
+    // despesa). A tela de Metas passa o ano para a meta poder atravessá-lo.
+    const fy = parseInt(fimAno, 10) || sy;
     return {
       recorrencia: RECURRENCE.MENSAL,
       dia_vencimento: d,
       data_inicio: `${sy}-${pad(sm)}-${pad(d)}`,
-      data_fim: `${sy}-${pad(fm)}-${pad(d)}`,
-      qtd_parcelas: fm - sm + 1,
+      data_fim: `${fy}-${pad(fm)}-${pad(d)}`,
+      qtd_parcelas: formOccurrenceCount({
+        recorrencia,
+        fimAno: fy,
+        fimMes,
+        startYear,
+        startMonth,
+      }),
     };
   }
 
@@ -148,6 +196,7 @@ export const deriveRecurrenceForm = (account) => {
       dia,
       mes: pad(s.m),
       anos: String(Math.max(1, e.y - s.y + 1)),
+      fimAno: String(e.y),
       fimMes: pad(e.m),
       startYear: String(s.y),
       startMonth: pad(s.m),
@@ -318,13 +367,40 @@ export const isPaidInPeriod = (account, filterYear, filterMonth) => {
 };
 
 /**
+ * Total de ocorrências (parcelas/aportes) do lançamento.
+ *
+ * Legado (sem `recorrencia`): cai em `durationMonths`, a janela de meses que o
+ * ExpenseBox já usa para esses registros.
+ *
+ * @returns {number} total de ocorrências (mínimo 1)
+ */
+export const occurrenceCount = (account) => {
+  if (account.recorrencia === RECURRENCE.UNICA) return 1;
+
+  if (account.recorrencia === RECURRENCE.MENSAL) {
+    const s = parseISO(account.dataInicio);
+    const e = parseISO(account.dataFim);
+    const startIdx = s.y * 12 + (s.m - 1);
+    const endIdx = e.y * 12 + (e.m - 1);
+    return Math.max(endIdx - startIdx + 1, 1);
+  }
+
+  if (account.recorrencia === RECURRENCE.ANUAL) {
+    const s = parseISO(account.dataInicio);
+    const e = parseISO(account.dataFim);
+    return Math.max(e.y - s.y + 1, 1);
+  }
+
+  return Math.max(Number(account.durationMonths) || 1, 1);
+};
+
+/**
  * Rótulo "índice/total" da ocorrência para a coluna de Parcela.
  */
 export const occurrenceLabel = (account, filterYear, filterMonth) => {
   const fy = filterYear ? parseInt(filterYear, 10) : null;
   const fm = filterMonth ? parseInt(filterMonth, 10) : null;
   const s = parseISO(account.dataInicio);
-  const e = parseISO(account.dataFim);
   const now = new Date();
 
   const clamp = (idx, total) => Math.min(Math.max(idx, 1), total);
@@ -334,19 +410,117 @@ export const occurrenceLabel = (account, filterYear, filterMonth) => {
   }
 
   if (account.recorrencia === RECURRENCE.MENSAL) {
+    const total = occurrenceCount(account);
     const startIdx = s.y * 12 + (s.m - 1);
-    const endIdx = e.y * 12 + (e.m - 1);
-    const total = endIdx - startIdx + 1;
     const refIdx =
       fy && fm ? fy * 12 + (fm - 1) : now.getFullYear() * 12 + now.getMonth();
     return `${clamp(refIdx - startIdx + 1, total)}/${total}`;
   }
 
   if (account.recorrencia === RECURRENCE.ANUAL) {
-    const total = e.y - s.y + 1;
+    const total = occurrenceCount(account);
     const refYear = fy || now.getFullYear();
     return `${clamp(refYear - s.y + 1, total)}/${total}`;
   }
 
   return "";
+};
+
+/**
+ * Competências ("YYYY-MM") em que a meta aceita aporte — a janela dela.
+ *
+ * Serve para não contar aporte fora do período: mover o início de uma meta de
+ * julho para setembro deixa um `pagamentos: ["2026-07"]` órfão, que não pode
+ * seguir contando como progresso.
+ *
+ * @returns {string[]} vazio para registros legados (sem recorrência/datas)
+ */
+export const goalCompetencias = (account) => {
+  if (!account.recorrencia || !account.dataInicio || !account.dataFim) return [];
+
+  const s = parseISO(account.dataInicio);
+  const e = parseISO(account.dataFim);
+
+  if (account.recorrencia === RECURRENCE.UNICA) {
+    return [`${s.y}-${pad(s.m)}`];
+  }
+
+  if (account.recorrencia === RECURRENCE.MENSAL) {
+    const startIdx = s.y * 12 + (s.m - 1);
+    const endIdx = e.y * 12 + (e.m - 1);
+    const out = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      out.push(`${Math.floor(i / 12)}-${pad((i % 12) + 1)}`);
+    }
+    return out;
+  }
+
+  if (account.recorrencia === RECURRENCE.ANUAL) {
+    const out = [];
+    for (let y = s.y; y <= e.y; y++) out.push(`${y}-${pad(s.m)}`);
+    return out;
+  }
+
+  return [];
+};
+
+/**
+ * Competência do próximo aporte pendente da meta — o primeiro mês da janela
+ * ainda não aportado. Se todos já foram, devolve o último (a meta acabou).
+ *
+ * É o que o botão de aporte mira quando o mês do filtro não faz parte da meta:
+ * bloquear o botão só porque o filtro está em outro mês não ajuda ninguém.
+ *
+ * @returns {string|null} "YYYY-MM" ou null (meta sem janela — legado)
+ */
+export const nextPendingCompetencia = (account) => {
+  const janela = goalCompetencias(account);
+  if (!janela.length) return null;
+  const pagos = Array.isArray(account.pagamentos) ? account.pagamentos : [];
+  return janela.find((c) => !pagos.includes(c)) ?? janela[janela.length - 1];
+};
+
+/**
+ * Progresso de uma META (tipo 4), derivado do que o backend já guarda — não há
+ * campo de alvo nem de acumulado.
+ *
+ *   alvo     = valor do aporte × total de ocorrências
+ *   guardado = valor do aporte × aportes feitos DENTRO da janela da meta
+ *
+ * `pagamentos` é a lista de competências quitadas; para uma meta, "quitada"
+ * significa "aporte feito". Só contam as que caem na janela (`goalCompetencias`),
+ * senão um aporte de um período que a meta não cobre mais inflaria o progresso.
+ * Sem a lista (backend legado), cai no `contaPaga` único — tudo ou nada — mesmo
+ * critério de `isPaidInPeriod`.
+ *
+ * @returns {{alvo:number, guardado:number, pct:number, aportesPagos:number,
+ *            totalAportes:number, concluida:boolean}}
+ */
+export const goalProgress = (account) => {
+  const valor = Number(account.value) || 0;
+  const totalAportes = occurrenceCount(account);
+  const janela = goalCompetencias(account);
+
+  let aportesPagos;
+  if (Array.isArray(account.pagamentos)) {
+    aportesPagos = janela.length
+      ? account.pagamentos.filter((c) => janela.includes(c)).length
+      : // Legado (sem datas p/ montar a janela): sem como saber quais valem;
+        // limita ao total para o progresso não passar de 100%.
+        Math.min(account.pagamentos.length, totalAportes);
+  } else {
+    aportesPagos = account.contaPaga === "S" ? totalAportes : 0;
+  }
+
+  const alvo = valor * totalAportes;
+  const guardado = valor * aportesPagos;
+
+  return {
+    alvo,
+    guardado,
+    pct: alvo > 0 ? Math.min((guardado / alvo) * 100, 100) : 0,
+    aportesPagos,
+    totalAportes,
+    concluida: totalAportes > 0 && aportesPagos >= totalAportes,
+  };
 };

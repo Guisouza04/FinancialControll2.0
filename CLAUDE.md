@@ -15,7 +15,7 @@ No test framework configured — only ESLint for code quality.
 
 ## Tech Stack
 
-React 19 + Vite 7 + React Router DOM 7. Styling via **styled-components** (CSS-in-JS). No TypeScript. Backend expected at `http://localhost:4000/api`.
+React 19 + Vite 7 + React Router DOM 7. Styling via **styled-components** (CSS-in-JS). No TypeScript. Backend expected at `http://localhost:8000/api`.
 
 ---
 
@@ -31,12 +31,15 @@ All routes except `/Login` are wrapped in `PrivateRoute`.
 | `/Contas` | Contas | `ExpenseBox tipo={1}` |
 | `/Investments` | Investments | `ExpenseBox tipo={2}` |
 | `/Optional` | Optional | `ExpenseBox tipo={3}` |
+| `/metas` | Metas | Cards de progresso das metas (`tipo=4`) — **path minúsculo** |
 | `/importar` | ImportarExtrato | Importa extrato OFX de cartão com tela de revisão manual |
 | `/Dados` | Dados | Hub: modal de Perfil, página Settings, modal de Salário |
 | `/Settings` | Settings | Alterar senha, logout |
 | `*` | NotFound | 404 |
 
-> **Quirk:** O Nav linka para `/metas` mas essa rota não existe no App.jsx.
+> **Case-sensitive:** o Nav linka `/metas` em minúsculo, enquanto as demais rotas
+> são capitalizadas (`/Contas`, `/Investments`). O React Router diferencia caixa —
+> a rota precisa continuar exatamente `/metas`.
 
 ---
 
@@ -61,14 +64,19 @@ O parâmetro `tipo` é o mecanismo central que conecta páginas, endpoints e o `
 | 1 | Contas | `GET /financas/contas` | `/Contas` |
 | 2 | Investimentos | `GET /financas/investimentos` | `/Investments` |
 | 3 | Opcionais | `GET /financas/opcionais` | `/Optional` |
-| 4 | Metas | `GET /financas/metas` | Não implementado |
+| 4 | Metas | `GET /financas/metas` | `/metas` |
 
 ---
 
 ## Camada de Dados
 
 ### `src/services/api.js`
-Instância Axios com `baseURL: http://localhost:4000/api` e interceptor de token.
+Instância Axios com `baseURL: http://localhost:8000/api` e interceptor de token.
+
+> **Dev:** o backend (container `financial_api`) sobe na **8000** e o CORS libera
+> **só** `http://localhost:5173` (`CORS_ORIGIN` no `.env` do backend). Se o Vite
+> subir em outra porta (5174 quando a 5173 já está ocupada), toda chamada falha
+> como **"Network Error"** no axios — é o CORS barrando, não o backend fora do ar.
 
 ### `src/services/financeService.js`
 Todos os métodos de CRUD financeiro:
@@ -120,7 +128,7 @@ Campos gerados por `src/utils/recurrence.js` no create/update. **O backend persi
 | Recorrência | Campos | Regra |
 |---|---|---|
 | `UNICA` | `dia_vencimento`, `data_inicio` = `data_fim` | Ocorre só no mês/ano escolhido |
-| `MENSAL` | `dia_vencimento`, `data_inicio`, `data_fim` | Todo mês no dia, do mês inicial até o **mês final (editável)** — padrão dezembro |
+| `MENSAL` | `dia_vencimento`, `data_inicio`, `data_fim` | Todo mês no dia, do mês inicial até o **mês final (editável)** — padrão dezembro. Sem `fimAno`, o fim fica **no ano do início**; passando `fimAno` (só a tela de Metas faz), pode atravessar o ano |
 | `ANUAL` | `dia_vencimento`, `data_inicio` (dia+mês), `data_fim` (`ano_inicio + N - 1`) | Uma vez por ano na data, por N anos (teto 5) |
 
 - Registros **legados** (sem `recorrencia`) continuam tratados pela lógica antiga de `qtd_parcelas`/`creationMonth`. `deriveRecurrenceForm` converte legado → formulário ao editar.
@@ -199,6 +207,61 @@ Tela inicial (`/`) — resumo financeiro do mês selecionado. Filtro de Mês/Ano
 - **Paleta categórica** (validada p/ CVD/contraste na superfície roxa): Contas `#3987e5`, Investimentos `#199e70`, Opcionais `#c98500`, Metas `#d55181`. Cores de status são fixas e nunca reutilizadas como cor de série.
 - **Estado vazio:** sem salário configurado → aviso com link p/ `/dados` (medidores ficam sem limite; distribuição ainda funciona).
 
+## Metas (`src/pages/Metas`)
+
+Rota `/metas` (`tipo=4`) — o 4º bucket da divisão 60/20/10/10. Uma meta é um
+**aporte recorrente** para um objetivo (ex.: R$ 500/mês por 12 meses), não um
+boleto: a tela mostra cards de progresso, não a tabela do `ExpenseBox`.
+
+**Alvo e progresso são DERIVADOS — não existem no banco.** Não houve migração: o
+modelo `Lancamento` já tinha tudo o que era preciso.
+
+| Conceito | Origem | Onde |
+|---|---|---|
+| Alvo | `value × occurrenceCount(account)` | `goalProgress` em `utils/recurrence.js` |
+| Guardado | `value × aportes dentro da janela (`goalCompetencias`)` | idem |
+| Aporte do mês | `togglePaymentStatus(id, competencia, pago)` | `useAccounts` (o mesmo toggle de "parcela paga") |
+| Concluída | aportes pagos ≥ total | `goalProgress().concluida` |
+
+- **`occurrenceCount(account)`** dá o total de ocorrências (UNICA/MENSAL/ANUAL;
+  legado → `durationMonths`). Foi extraído de dentro do `occurrenceLabel`, que
+  agora o consome — a regra de contagem vive num lugar só.
+- **Registrar aporte = marcar a competência como paga.** Para uma meta, "parcela
+  paga" lê-se "aporte feito"; por isso a página reusa `occurrenceCompetencia` +
+  `isPaidInPeriod` (ver *Pagamento por competência*).
+- **Filtro de mês ≠ filtro da lista.** O Ano/Mês do topo só define **de qual
+  competência é o aporte**; a lista mostra todas as metas sempre (uma meta
+  atravessa meses e sumiria da tela se filtrada por período). Com "Todos os
+  meses" a competência de uma MENSAL é ambígua → o botão de aporte fica
+  desabilitado, mesma regra do `ExpenseBox`.
+- **Só conta aporte DENTRO da janela.** `goalCompetencias(account)` lista as
+  competências que a meta cobre, e `goalProgress` conta apenas os `pagamentos`
+  que caem nelas. Sem isso, mover o início de uma meta de julho para setembro
+  deixaria o aporte de julho órfão **contando como progresso para sempre** (bug
+  real, encontrado em uso).
+- **O botão de aporte segue a meta, não o filtro.** `competenciaDoAporte` usa o
+  mês do filtro **se** ele fizer parte da meta; senão, cai em
+  `nextPendingCompetencia` — o primeiro mês da janela ainda não aportado. Mover
+  o início para setembro passa a oferecer "Registrar aporte de Setembro/2026",
+  em vez de bloquear o botão dizendo que o mês do filtro está fora. Por isso o
+  rótulo traz **mês/ano**: a meta atravessa anos e "Janeiro" seria ambíguo.
+  Consequência: com "Todos os meses" o botão continua funcionando (mira o
+  próximo pendente) — a meta não tem a ambiguidade que trava o `ExpenseBox`.
+- **Sem `pagamentos`** (backend legado): cai no `contaPaga` único → tudo ou nada.
+- **Fim com ano + mês:** o modal escolhe ano E mês de término (`fimAno`), então uma
+  meta atravessa o ano — ao contrário das despesas, cujo fim é sempre no ano do
+  início. `formOccurrenceCount` (contraparte de `occurrenceCount` para os campos
+  do formulário) calcula as ocorrências e alimenta o `qtd_parcelas` do payload.
+  `fimAno` é **opcional** em `validateRecurrence`/`buildRecurrencePayload`: sem ele
+  o comportamento é o antigo, e `ExpenseBox`/`QuickAddModal` seguem intocados.
+- **Sem tags:** o modal de meta não tem `TagPicker` (decisão de produto). Como
+  `tag_ids` tem default `[]` no backend e o update **substitui** o conjunto,
+  omitir o campo deixa a meta sem tags — o que é o esperado aqui.
+- Metas continuam **não criáveis** pelo `ExpenseBox`/`QuickAddModal` (`TIPO_OPTIONS`
+  exclui o 4) — criar meta é ação da própria página.
+- **Cor:** `#d55181`, a mesma da série Metas no `BUDGET` do Dashboard. A barra fica
+  verde (`#3ddc84`) só quando concluída.
+
 ## Importação de Extrato OFX (`src/pages/ImportarExtrato`)
 
 Rota `/importar` (card no hub de Finanças). Fluxo **stateless com revisão manual**:
@@ -261,8 +324,6 @@ Notificações globais. `ToastProvider` (montado no `main.jsx`) renderiza a fila
 
 | Item | Detalhe |
 |---|---|
-| Metas não implementado | `tipo=4` tem suporte no service mas sem página/rota |
-| Rota `/metas` quebrada | Nav linka para `/metas` que não existe no App.jsx |
 | Social login placeholder | Botões Google/Apple/Microsoft na tela de login são não-funcionais |
 | Salário — confirmar backend | Modal de `/Dados` faz `POST /financas/salary`; validar se o backend implementa |
 | Perfil — confirmar backend | Modal de Perfil (em `/Dados`) faz `PUT /security/profile`; validar se o backend implementa |
