@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 export const StyledWrapper = styled.div`
   .card {
@@ -41,13 +41,21 @@ export const StyledWrapper = styled.div`
     background: var(--Complementar);
   }
 
+  /* No hover o disco do círculo clareia, então o ícone escurece para manter o
+     contraste. Ícones PREENCHIDOS (variant="preencherFill") precisam do fill;
+     ícones de CONTORNO (svg com fill="none") só do stroke — pintar o fill
+     deles fecharia o desenho num borrão escuro. */
   .card:hover svg path,
   .card:hover svg rect,
   .card:hover svg polygon,
   .card:hover svg ellipse,
   .card:hover svg {
     stroke: var(--background);
-    fill: ${({ variant }) => (variant === "preencherFill" ? "#1E0033" : "")};
+    ${({ variant }) =>
+      variant === "preencherFill" &&
+      css`
+        fill: var(--background);
+      `}
   }
 
   .card:hover p {

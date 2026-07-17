@@ -70,8 +70,10 @@ function Despesas() {
             />
           </Link>
           <Link to="/importar">
+            {/* Sem `preencherFill`: este ícone é de contorno (fill="none"), e
+                preencher os paths no hover transformaria o arquivo num borrão
+                escuro. Aqui só o traço muda de cor. */}
             <Cards
-              variant="preencherFill"
               name="Importar Extrato"
               svgContent={
                 <svg
