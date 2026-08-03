@@ -3,9 +3,12 @@ import { useState, useMemo } from "react";
 import MenuNavecacao from "../../components/Nav";
 import TituloPage from "../../components/Title";
 import BotaoPadrao from "../../components/Button";
+import FinanceTabs from "../../components/FinanceTabs";
 import Select from "../../components/Select";
 import RequiredField from "../../components/RequiredField";
+import Loader from "../../components/Loader";
 import { useAccounts } from "../../hooks/useAccounts";
+import { useDeferredLoading } from "../../hooks/useDeferredLoading";
 import { formatBRL, formatDigitsAsBRL, digitsToApiValue, hasPositiveValue, reaisToDigits } from "../../utils/currency";
 import {
   RECURRENCE,
@@ -19,10 +22,12 @@ import {
   nextPendingCompetencia,
   goalProgress,
 } from "../../utils/recurrence";
+import { matchesSearch } from "../../utils/search";
 import { useToast } from "../../context/toast";
 import { useConfirm } from "../../context/confirm";
 // Mesmo modal das outras telas — reusa os estilos do ExpenseBox, como o
-// QuickAddModal já faz.
+// QuickAddModal já faz. O campo de busca vem do mesmo lugar, para a lente sobre
+// a lista ser idêntica à das tabelas.
 import {
   ModalContent,
   Form,
@@ -32,6 +37,7 @@ import {
   SectionLabel,
   ModalButtons,
   ModalTitle,
+  SearchInput,
 } from "../../components/ExpenseBox/styles";
 import {
   Toolbar,
@@ -79,6 +85,8 @@ function Metas() {
   // filtrarmos por período.
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterMonth, setFilterMonth] = useState(currentMonth);
+  // Busca por nome da meta — a única lente que realmente encolhe a lista.
+  const [search, setSearch] = useState("");
 
   const {
     accounts,
@@ -88,6 +96,9 @@ function Metas() {
     deleteAccount,
     togglePaymentStatus,
   } = useAccounts(TIPO_META, filterYear, filterMonth);
+
+  // Loader só depois do limiar — ver useDeferredLoading.
+  const showLoader = useDeferredLoading(loading);
 
   // ------- Formulário do modal (add e edição compartilham o estado) -------
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -144,14 +155,17 @@ function Metas() {
     return nextPendingCompetencia(goal);
   };
 
-  // Progresso de cada meta, separando concluídas das em andamento.
+  // Progresso de cada meta, separando concluídas das em andamento. A busca entra
+  // ANTES do split para os contadores dos grupos baterem com o que está na tela.
   const { emAndamento, concluidas } = useMemo(() => {
-    const withProgress = accounts.map((a) => ({ ...a, progresso: goalProgress(a) }));
+    const withProgress = accounts
+      .filter((a) => matchesSearch(search, a.name))
+      .map((a) => ({ ...a, progresso: goalProgress(a) }));
     return {
       emAndamento: withProgress.filter((g) => !g.progresso.concluida),
       concluidas: withProgress.filter((g) => g.progresso.concluida),
     };
-  }, [accounts]);
+  }, [accounts, search]);
 
   const resetForm = () => {
     setName("");
@@ -361,7 +375,10 @@ function Metas() {
     <div className="frame">
       <MenuNavecacao />
       <div className="containerExpenses">
-        <TituloPage titulo="Metas" />
+        <div className="pageHead">
+          <TituloPage titulo="Metas" />
+          <FinanceTabs />
+        </div>
         <div className="boxExpenses">
           <div className="contentExpenses">
             <Toolbar>
@@ -376,6 +393,13 @@ function Metas() {
                   onChange={setFilterMonth}
                   options={monthFilterOptions}
                 />
+                <SearchInput
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar meta pelo nome…"
+                  aria-label="Buscar meta"
+                />
                 <span className="hint">
                   mês de referência do aporte — fora da meta, o botão usa o
                   próximo aporte pendente
@@ -387,7 +411,9 @@ function Metas() {
             </Toolbar>
 
             {loading ? (
-              <Loading>Carregando metas…</Loading>
+              /* Vazio até o limiar: trocar de aba resolve antes disso, e o
+                 loader entrando e saindo em poucos frames é o que piscava. */
+              <Loading>{showLoader && <Loader />}</Loading>
             ) : accounts.length === 0 ? (
               <Empty>
                 <strong>Nenhuma meta ainda</strong>
@@ -397,6 +423,21 @@ function Metas() {
                 </span>
                 <button className="button2" type="button" onClick={openAddModal}>
                   Criar primeira meta
+                </button>
+              </Empty>
+            ) : emAndamento.length === 0 && concluidas.length === 0 ? (
+              <Empty>
+                <strong>Nenhuma meta encontrada</strong>
+                <span>
+                  Nenhuma das suas metas casa com “{search.trim()}”. Limpe a
+                  busca para ver todas de novo.
+                </span>
+                <button
+                  className="button3"
+                  type="button"
+                  onClick={() => setSearch("")}
+                >
+                  Limpar busca
                 </button>
               </Empty>
             ) : (

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { contentEnter } from "../../styles/animations";
 
 // Cor da série "Metas" na paleta categórica do Dashboard (`BUDGET` em
 // src/pages/Home/index.jsx). Cores de status nunca viram cor de série.
@@ -20,13 +21,32 @@ export const Filters = styled.div`
   gap: 1rem;
   flex-wrap: wrap;
 
+  /* Ano / Mês (wrappers dos <Select>, que são width:100%). Sem largura fixa
+     eles usam 100% como base e cada um toma uma linha inteira assim que a
+     barra ganha mais um controle. Mesma medida do ExpenseBox. */
+  & > div {
+    flex: 0 0 auto;
+    width: 18rem;
+  }
+
+  /* A busca não cresce aqui (no ExpenseBox ela é elástica porque é o último
+     controle da barra) — se crescesse, empurraria o texto de ajuda para fora. */
+  & > input {
+    flex: 0 0 24rem;
+  }
+
   .hint {
+    /* Quebra para a linha de baixo quando a barra aperta, em vez de vazar. */
+    flex: 1 1 20rem;
     font-size: 1.2rem;
     color: var(--text-muted);
   }
 `;
 
+/* Os três blocos abaixo só existem no estado JÁ CARREGADO, então a animação
+   pode ser fixa: o mount deles é a chegada dos dados. */
 export const GroupLabel = styled.h3`
+  ${contentEnter}
   font-size: 1.3rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -40,6 +60,7 @@ export const GroupLabel = styled.h3`
 `;
 
 export const GoalGrid = styled.div`
+  ${contentEnter}
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(30rem, 1fr));
   gap: 1.6rem;
@@ -161,6 +182,7 @@ export const IconButton = styled.button`
 `;
 
 export const Empty = styled.div`
+  ${contentEnter}
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -182,9 +204,10 @@ export const Empty = styled.div`
   }
 `;
 
+/* Carregamento: só centra o Loader. O padding é o que dá altura à caixa — a
+   lista ainda não existe, então não há nada para ocupar espaço. */
 export const Loading = styled.div`
-  padding: 4rem;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 1.4rem;
+  padding: 6rem 4rem;
+  display: grid;
+  place-items: center;
 `;

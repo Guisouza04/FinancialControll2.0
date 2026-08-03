@@ -1,6 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
-import Dados from "./pages/Dados";
 import TelaLogin from "./pages/Login";
 import Config from "./pages/Settings";
 import Despesas from "./pages/Despesas";
@@ -25,16 +24,18 @@ function App() {
             </PrivateRoute>
           }
         />
-        {/* Tela de Dados */}
+        {/* "/dados" foi absorvida por Configurações — o card de Dados (salário)
+            virou um dos cards de lá. Redireciona em vez de 404 porque links
+            antigos (ex.: o aviso de salário no Dashboard) ainda apontam pra cá. */}
         <Route
           path="/dados"
           element={
             <PrivateRoute>
-              <Dados />
+              <Navigate to="/Settings" replace />
             </PrivateRoute>
           }
         />
-        {/* Tela de Configurações */}
+        {/* Tela de Configurações (Perfil, Dados, Alterar Senha, Sair) */}
         <Route
           path="/Settings"
           element={

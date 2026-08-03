@@ -3,13 +3,17 @@ import MenuNavecacao from "../../components/Nav";
 import TituloPage from "../../components/Title";
 import BotaoPadrao from "../../components/Button";
 import ExpenseBox from "../../components/ExpenseBox";
+import FinanceTabs from "../../components/FinanceTabs";
 
 function Investments() {
   return (
     <div className="frame">
       <MenuNavecacao />
       <div className="containerExpenses">
-        <TituloPage titulo="Investimentos" />
+        <div className="pageHead">
+          <TituloPage titulo="Investimentos" />
+          <FinanceTabs />
+        </div>
         <div className="boxExpenses">
           <div className="contentExpenses">
             <ExpenseBox tipo={2}></ExpenseBox>

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { contentEnter } from "../../styles/animations";
 
 export const Container = styled.div`
   display: flex;
@@ -17,6 +18,10 @@ export const Container = styled.div`
   flex: 1;
   min-height: 0;
 
+  /* Entrada do conteúdo quando os dados chegam (inclusive ao trocar de aba).
+     Condicional: é a troca de classe que dispara a animação. */
+  ${({ $ready }) => $ready && contentEnter}
+
   @media (max-width: 768px) {
     padding: 1.6rem;
     border-radius: var(--radius-md);
@@ -25,18 +30,29 @@ export const Container = styled.div`
   }
 `;
 
-export const Title = styled.h2`
-  color: #fff;
-  text-align: start;
-  font-size: 2.4rem;
+/* Carregamento: o Loader sozinho, centrado no card — sem título nem texto, como
+   no Dashboard. O `min-height` segura a caixa no mobile, onde o Container perde
+   o `flex: 1` e não haveria sobra para centrar coisa nenhuma. */
+export const LoaderArea = styled.div`
+  flex: 1;
+  min-height: 24rem;
+  display: grid;
+  place-items: center;
 `;
 
 export const Toolbar = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1.5rem;
+
+  /* O "Adicionar" não encolhe nem desce — quem quebra é o FilterContainer,
+     dentro de si. Sem isto, abrir a busca empurrava o botão para uma segunda
+     linha do Toolbar, e lá ele reaparecia colado à esquerda. */
+  & > button {
+    flex: 0 0 auto;
+  }
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -53,6 +69,10 @@ export const FilterContainer = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+  /* Come a sobra da linha do Toolbar e quebra internamente, de modo que o botão
+     "Adicionar" ao lado nunca é empurrado para baixo. */
+  flex: 1 1 auto;
+  min-width: 0;
 
   /* Ano / Mês / Status (wrappers dos <Select>) */
   & > div {
@@ -75,6 +95,121 @@ export const FilterContainer = styled.div`
       width: 100%;
     }
   }
+`;
+
+/* Lupa + campo, na MESMA linha dos filtros. Cresce até o fim da barra de filtros
+   (`flex: 1 1 auto`) mesmo com a busca fechada, de modo que abrir só preenche um
+   vão que já existia — nada ao redor se mexe durante a animação.
+
+   Fechado, `min-width` é só a lupa; aberto, pede 22rem para o campo não nascer
+   espremido: se a sobra da linha for menor que isso, a área inteira (lupa junto)
+   quebra para a linha de baixo e lá ocupa o vão todo. */
+export const SearchArea = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: ${(p) => (p.$open ? "22rem" : "4.2rem")};
+  transition: min-width 0.28s var(--ease);
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 0;
+  }
+`;
+
+/* 🔍 ao lado do "Mês Atual": revela/esconde o campo de busca. A busca é uso
+   eventual e a barra de filtros já é longa — deixá-la sempre visível custava uma
+   linha inteira do Toolbar por um campo quase sempre vazio.
+
+   `$active` (aberto) usa a cor de marca, não só um tom de vidro: precisa ficar
+   claro que existe uma lente sobre a tabela. */
+export const SearchToggle = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 4.2rem;
+  height: 4.2rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: ${(p) => (p.$active ? "var(--text-primary)" : "var(--text-muted)")};
+  background: ${(p) => (p.$active ? "var(--glass-bg-strong)" : "var(--glass-bg)")};
+  border: 1px solid
+    ${(p) => (p.$active ? "var(--RoxoNubank)" : "var(--glass-border)")};
+  transition: all 0.2s var(--ease);
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--RoxoClaro);
+    background: var(--glass-bg-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--RoxoClaro);
+    outline-offset: 2px;
+  }
+`;
+
+/* Campo de busca da tabela. Fica SEMPRE no DOM (a visibilidade é o `$open`) —
+   desmontar cortaria a animação de saída pela metade.
+
+   Fechado ele tem largura, padding e borda zerados: some encolhendo para dentro
+   da lupa, que é de onde ele nasce. `min-width: 0` é obrigatório — sem isso o
+   tamanho intrínseco do <input> impede o encolhimento até 0. */
+export const SearchInput = styled.input`
+  /* basis 100% + shrink: aberto, come toda a sobra da SearchArea (descontada a
+     lupa) sem precisar saber a largura dela. */
+  flex: 0 1 100%;
+  min-width: 0;
+  width: ${(p) => (p.$open ? "100%" : "0")};
+  /* Mesma altura da lupa: o campo cresce só na horizontal, como se saísse dela. */
+  height: 4.2rem;
+  padding: ${(p) => (p.$open ? "0 14px" : "0")};
+  border: ${(p) => (p.$open ? "1px" : "0")} solid var(--glass-border);
+  opacity: ${(p) => (p.$open ? "1" : "0")};
+  pointer-events: ${(p) => (p.$open ? "auto" : "none")};
+  border-radius: var(--radius-sm);
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  overflow: hidden;
+  transition: width 0.28s var(--ease), padding 0.28s var(--ease),
+    opacity 0.22s var(--ease), border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease), background-color 0.2s var(--ease);
+
+  &::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+  }
+
+  &:hover {
+    border-color: var(--RoxoClaro);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--RoxoNubank);
+    background-color: var(--glass-bg-strong);
+    box-shadow: 0 0 0 4px rgba(130, 10, 209, 0.22);
+  }
+
+  /* Quem prefere menos movimento vê o campo simplesmente aparecer. */
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.01s;
+  }
+`;
+
+/* Linha ocupando a tabela inteira quando a busca não encontra nada — sem ela o
+   <tbody> vazio faz a tabela parecer quebrada. */
+export const EmptyRow = styled.td`
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 1.35rem;
+  color: var(--text-muted);
 `;
 
 export const MonthNavButton = styled.button`
@@ -379,7 +514,9 @@ export const PaginationContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  /* Folga maior que a dos filtros: as bolinhas do PageDots são alvos pequenos e
+     precisam de ar em volta para não parecerem parte dos botões. */
+  gap: 1.8rem;
 `;
 
 export const PaginationButton = styled.button`

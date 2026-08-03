@@ -223,6 +223,17 @@ const GlobalStyles = createGlobalStyle`
   min-height: 0;
  }
 
+ /* Título + FinanceTabs na MESMA linha. Se as abas fossem um bloco à parte, o
+    gap de 4rem do .containerExpenses as afastaria do título e empurraria a
+    tabela para baixo. */
+ .pageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+ }
+
  .boxExpenses {
   display: flex;
   flex-direction: column;

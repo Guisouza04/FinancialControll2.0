@@ -2,6 +2,39 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## 📚 Vault (fonte de verdade sobre o sistema)
+
+**`../Vault/`** é um cofre Obsidian com a documentação profunda do sistema:
+regra de negócio, o que cada tela entrega, decisões arquiteturais (ADRs) e
+limites. **Este `CLAUDE.md` é o cartão de referência rápida; o vault é a
+profundidade.**
+
+**Antes de implementar qualquer coisa, leia `../Vault/06-Guias/Guia-Antes-de-Implementar.md`.**
+Ele diz exatamente quais notas ler para o que você vai tocar.
+
+Pontos de entrada:
+
+| Arquivo | Para |
+|---|---|
+| `../Vault/Mapa-do-Sistema.md` | Hub — comece aqui se não sabe por onde |
+| `../Vault/06-Guias/Guia-Antes-de-Implementar.md` | Checklist antes de mexer |
+| `../Vault/05-Decisoes/ADR-Index.md` | **Por que** algo é do jeito que é |
+| `../Vault/07-Limites/O-que-o-sistema-nao-faz.md` | Antes de propor feature nova |
+| `../Vault/07-Limites/Pendencias.md` | Bugs e dívida conhecidos |
+
+**Regras:**
+
+1. **Consulte antes de implementar.** Várias decisões deste projeto são
+   contra-intuitivas e têm ADR justamente porque alguém tentaria "consertá-las"
+   (`na_fatura` não excluir do total, metas sem tabela, filtro client-side).
+2. **Atualize junto com o código.** Mudou regra de negócio → atualiza a nota,
+   no mesmo trabalho. É parte do "pronto", não tarefa separada.
+3. **Divergência → o vault vence** e este arquivo é corrigido.
+
+---
+
 ## Commands
 
 ```bash
@@ -33,13 +66,33 @@ All routes except `/Login` are wrapped in `PrivateRoute`.
 | `/Optional` | Optional | `ExpenseBox tipo={3}` |
 | `/metas` | Metas | Cards de progresso das metas (`tipo=4`) — **path minúsculo** |
 | `/importar` | ImportarExtrato | Importa extrato OFX de cartão com tela de revisão manual |
-| `/Dados` | Dados | Hub: modal de Perfil, página Settings, modal de Salário |
-| `/Settings` | Settings | Alterar senha, logout |
+| `/Settings` | Settings | **Configurações** (item do Nav): Perfil, Dados (salário), Alterar Senha, Sair |
+| `/dados` | — | **Redirect** para `/Settings` (a tela de Dados foi absorvida) |
 | `*` | NotFound | 404 |
 
-> **Case-sensitive:** o Nav linka `/metas` em minúsculo, enquanto as demais rotas
-> são capitalizadas (`/Contas`, `/Investments`). O React Router diferencia caixa —
-> a rota precisa continuar exatamente `/metas`.
+> **A antiga tela `/dados` não existe mais.** A hierarquia estava invertida — o
+> Nav levava a "Dados", e era dentro dela que havia um card para
+> "Configurações". Hoje o Nav leva a **Configurações** (`/Settings`), que reúne
+> os quatro cards (Perfil · Dados · Alterar Senha · Sair). `src/pages/Dados/` foi
+> removido e `/dados` virou `<Navigate to="/Settings" replace />` para não
+> quebrar links antigos. Ver `../Vault/02-Telas/Tela-Dados.md`.
+
+> **A caixa das rotas é inconsistente — e isso não quebra nada.** O Nav linka
+> `/metas` em minúsculo e `/Settings` em maiúsculo, o hub de Finanças linka `/contas`,
+> `/investments` e `/optional`, enquanto o `App.jsx` registra `/Contas`,
+> `/Investments`, `/Optional`. **Funciona porque o React Router 7 casa rotas de
+> forma case-insensitive por padrão** (`caseSensitive` é opt-in por rota e não é
+> usado aqui). Se fosse sensível à caixa, três dos quatro cards do hub cairiam
+> no 404. Não "conserte" um link achando que a caixa causa 404 — a causa é
+> outra. Ver `../Vault/05-Decisoes/ADR-006-Caixa-das-rotas.md`.
+
+### Navegação entre as quatro seções de finança
+
+As telas dos quatro baldes (`/Contas`, `/Investments`, `/Optional`, `/metas`) têm
+uma **barra de abas** (`FinanceTabs`) na linha do título, com a aba atual
+destacada — trocar de seção é um clique, sem passar pelo hub. O hub `/Financas`
+continua sendo a porta de entrada e o **único** acesso a `/importar`; o botão
+"Voltar" de cada tela também segue lá. Ver a seção *FinanceTabs* abaixo.
 
 ---
 
@@ -49,7 +102,8 @@ All routes except `/Login` are wrapped in `PrivateRoute`.
 2. Token salvo em `localStorage.authToken`
 3. `PrivateRoute` (`src/components/Private/PrivateRoute.jsx`) lê `localStorage.authToken` — sem token redireciona para `/Login`
 4. Axios interceptor em `src/services/api.js` injeta `Authorization: Bearer {token}` em **todas** as requisições automaticamente
-5. Logout (Settings): apenas navega para `/Login` — **não limpa o localStorage** (bug conhecido)
+5. Logout (Settings): `localStorage.removeItem('authToken')` + navega para `/Login`. É **client-side apenas** — não há revogação no servidor, então um JWT vazado vale até expirar (1 dia)
+6. **Interceptor de resposta:** em **401**, `api.js` limpa o token e redireciona para `/Login` (com guarda para não redirecionar se já estiver lá). É o que derruba a sessão quando o token expira — `PrivateRoute` só checa se o token **existe**, não se é válido
 
 Cadastro: `POST /security/signup` com `{ CPF, email, password, confirmPassword }`.
 
@@ -65,6 +119,14 @@ O parâmetro `tipo` é o mecanismo central que conecta páginas, endpoints e o `
 | 2 | Investimentos | `GET /financas/investimentos` | `/Investments` |
 | 3 | Opcionais | `GET /financas/opcionais` | `/Optional` |
 | 4 | Metas | `GET /financas/metas` | `/metas` |
+
+> **`src/utils/financeTypes.js` é a fonte única de "tipo → tela".** `FINANCE_TYPES`
+> tem `{ tipo, label, labelSingular, route, color }` dos quatro baldes, e
+> `financeTypeOf(tipo)` busca um. Consomem: o `BUDGET` do Dashboard (que mantém
+> local só `pct`/`kind`, que são regra de orçamento) e o `FinanceTabs`. **Rota ou
+> cor nova de bucket muda aqui, não em cada tela.** Os `TIPO_OPTIONS` dos modais
+> (`ExpenseBox`, `QuickAddModal`, `ImportarExtrato`) ainda são listas próprias —
+> dá para derivá-los de `labelSingular`, mas não foram migrados.
 
 ---
 
@@ -182,12 +244,14 @@ const { accounts, loading, error, fetchAccounts, addAccount, updateAccount, dele
 **Props:** `tipo` (1, 2 ou 3)
 
 **Funcionalidades:**
-- **Filtros:** Ano (input) + Mês (Select) + **Status** (Todas / Pagas / Pendentes) + **Tag** (Todas as tags / uma tag). Default: mês e ano atuais.
+- **Filtros:** Ano (input) + Mês (Select) + **Status** (Todas / Pagas / Pendentes) + **Tag** (Todas as tags / uma tag) + **Busca** (texto). Default: mês e ano atuais.
+- **Busca:** **escondida atrás de uma 🔍** (`SearchToggle`, ao lado do "Mês Atual") — o campo só aparece ao clicar, **expandindo da lupa para o lado** (animação de `width`/`padding`/`opacity`, ~0.28s) até o fim da barra de filtros; não ocupa mais uma barra de largura cheia. Lupa e campo ficam no `SearchArea`, que já come a sobra da linha com a busca fechada — abrir não empurra nada. O `SearchInput` **fica sempre montado** (prop `$open`), senão a saída não animaria; fechado sai da ordem de tabulação. **Fechar limpa o termo** (Esc no campo também fecha): um filtro ativo invisível faria a tabela mentir, mostrando uma lista curta sem nada na tela explicando por quê. Aberta, a 🔍 fica com a borda de marca.
+- Campo de texto incremental, **último elo da cadeia de filtros** — roda sobre `filteredAccounts` (período/status/tag) produzindo `visibleAccounts`, então nunca traz lançamento de outro mês. Casa por **nome do lançamento e nome das tags**, insensível a caixa e acento (`src/utils/search.js`: `normalizeText` + `matchesSearch`, compartilhado com Metas e ImportarExtrato). **Não altera o total** — `totalPayable` continua somando `filteredAccounts`, e a `TotalBar` avisa isso quando há busca ativa (decisão de produto; não "conserte"). Digitar reseta a paginação para a página 1.
 - **Tags:** chips coloridos na coluna Nome; no modal, um `TagPicker` seleciona/cria/exclui tags (ver seção *Tags*).
-- **Paginação:** itens por página **dinâmicos** — calculados pela altura disponível da tabela via `ResizeObserver` no `TableWrapper` (a tabela ocupa a altura da tela e enche de linhas).
+- **Paginação:** itens por página **dinâmicos** — calculados pela altura disponível da tabela via `ResizeObserver` no `TableWrapper` (a tabela ocupa a altura da tela e enche de linhas). O contador entre "Anterior" e "Próxima" é o **`PageDots`** (`src/components/PageDots`): bolinhas horizontais, a atual acesa por um brilho radial roxo. São `<input type="radio">` de verdade (grupo com `name` de `useId()`) — ganham navegação por ← → e leitura de tela de graça. O brilho **não é repintado, é deslocado**: fica sempre no `background-image` e some empurrado 16px (o tamanho do dot) para fora do círculo, com `:checked ~ input` mandando os posteriores para o lado oposto — mexer no tamanho do dot exige mexer no deslocamento junto. As regras usam `&&` (especificidade dobrada) porque o `globalStyles` estiliza `input`/`input:focus` e o anel do foco global desenharia um retângulo sobre a bolinha. Acima de **7 páginas** vira janela deslizante (pontas em `scale(.6)`) e só então aparece o contador `6 / 12`.
 - **Tabela:** Nome | Valor (`R$ 1.234,56`) | Parcela (índice/total da ocorrência) | Status (verde "Paga" / vermelho "Pendente") | Ações. Layout de altura cheia (`flex` do `.frame` até o corpo) com cabeçalho fixo (`sticky`); scroll no `TableWrapper`.
 - **Ações:** Editar (✏️ → abre modal pré-preenchido: nome, valor e recorrência/período), Deletar com confirmação, Toggle de pagamento com confirmação
-- **Modal (add/edição):** Overlay com Nome, Valor (máscara BRL) e Recorrência (Única/Mensal/Anual + campos condicionais) — mesmo modal para criar e editar
+- **Modal (add/edição):** Overlay com Nome, Valor (máscara BRL) e Recorrência (Única/Mensal/Anual + campos condicionais) — mesmo modal para criar e editar. **Renderizado no `<body>` via `ModalPortal`** (`src/components/ModalPortal`, `createPortal`): o `Container` tem `backdrop-filter`, o que cria stacking context e prendia o overlay dentro do card — o `z-index: 1000` valia só ali e o `:hover` do botão "Voltar" (`transform: scale`) passava por cima do modal. Modal novo dentro de uma superfície de vidro deve usar o portal
 - **Botão de filtro:** "Mês Atual" (ou "Data Atual" se o ano do filtro difere do sistema) restaura mês+ano correntes
 
 **Lógica de filtro por período:**
@@ -197,15 +261,47 @@ const { accounts, loading, error, fetchAccounts, addAccount, updateAccount, dele
 
 ---
 
+## `FinanceTabs` (`src/components/FinanceTabs`)
+
+Barra de abas das quatro seções de finança, na linha do título de `/Contas`,
+`/Investments`, `/Optional` e `/metas`. Sem props — a aba ativa vem da URL, para
+que nenhuma tela possa se declarar a seção errada. Os rótulos, rotas e cores vêm
+de `FINANCE_TYPES` (ver *Tipo: Mapeamento Central*).
+
+- **Usa `NavLink`, não `Link`** — é o **primeiro do projeto** (o `Nav` lateral usa
+  `Link` e não destaca item ativo). O `NavLink` aplica sozinho a classe `.active`
+  e `aria-current="page"`.
+- **Não passe `caseSensitive`.** O default `false` faz o `NavLink` comparar os dois
+  lados em minúsculo, e é só por isso que o destaque funciona com as rotas de
+  caixa mista (`/Contas` maiúscula, `/metas` minúscula). Ligar a flag apagaria o
+  destaque em metade das telas. Ver `../Vault/05-Decisoes/ADR-006-Caixa-das-rotas.md`.
+- **Importar Extrato fica de fora** de propósito: é uma ação, não um tipo. Só o
+  hub `/Financas` leva a `/importar`.
+- **O ponto colorido é reforço, não informação** — o rótulo carrega o significado,
+  então nada se perde em daltonismo. Mesma paleta categórica dos medidores.
+- **Layout:** a classe global `.pageHead` põe título e abas na mesma linha; abaixo
+  de ~600px as abas quebram para a linha seguinte (`flex-wrap`, sem scroll
+  horizontal — scroll esconderia destino).
+- **O período NÃO acompanha a troca de aba:** cada tela abre no mês atual. Levar o
+  filtro na URL é trabalho em aberto.
+
+---
+
 ## Dashboard (`src/pages/Home`)
 
 Tela inicial (`/`) — resumo financeiro do mês selecionado. Filtro de Mês/Ano local (default: atual); a divisão-alvo do salário é **60% Contas · 20% Investimentos · 10% Opcionais · 10% Metas**.
 
 - **Dados:** `useAccounts(1..4)` (busca cada tipo **uma vez**, sem filtro; a soma por período é client-side via `sumActiveInPeriod`) + `financeService.fetchSalary()`.
-- **Config `BUDGET`:** cada bucket tem `pct` e `kind` — `teto` (Contas, Opcionais: não pode passar → vermelho quando excede) vs `meta` (Investimentos, Metas: alvo a alcançar → verde ao atingir).
-- **Seções:** KPIs (salário, comprometido, saldo livre, % de contas) → **medidores** por bucket (gasto × limite, forma "razão vs. limite") → **donut** SVG da distribuição real + legenda Real × Plano.
+- **Config `BUDGET`:** cada bucket tem `pct`, `kind` e `route` — `teto` (Contas, Opcionais: não pode passar → vermelho quando excede) vs `meta` (Investimentos, Metas: alvo a alcançar → verde ao atingir). `route` é a tela da finança correspondente.
+- **Atalho 👁:** um `EyeLink` para `b.route` (Contas/Investments/Optional/metas) nos medidores **e** na legenda do donut. Na legenda ele fecha a linha, como **5ª coluna** do grid — o `LegendHeadRow` tem uma célula vazia para não desalinhar. No medidor ele fica no **cabeçalho**, ao lado do valor gasto, dentro de `MeterHeadRight` (sem esse agrupamento o `space-between` do `MeterHead` jogaria o valor para o centro). Abaixo de 460px o "Plano" some, mas o olho fica.
+- **Seções:** KPIs (salário, comprometido, saldo livre, % de contas) → **Quitação do mês** (ver abaixo) → **medidores** por bucket (gasto × limite, forma "razão vs. limite") → **donut** SVG da distribuição real + legenda Real × Plano → **Gastos por tag** (ver abaixo).
+- **Quitação do mês:** a **única** seção que olha o *status de pagamento* (o resto soma o comprometido, pago ou não). Usa `isPaidInPeriod` — a mesma função do `ExpenseBox`; se as duas telas divergirem, alguém reimplementou a regra. Card de dois painéis: barra empilhada **pago · atrasado · a vencer** (com legenda e valores) + lista **Próximos vencimentos** (pendentes do mês por `diaVencimento`, 6 itens + "+N"). Inclui os 4 tipos — numa meta, "pago" é "aporte registrado". **Atraso = data de vencimento < hoje** (comparação com a data real, sem caso especial por mês); `diaVencimento` sofre `Math.min(dia, últimoDiaDoMês)` (vencimento 31 em fevereiro rolaria para março); **sem dia de vencimento nunca é atraso** (legado/importação → badge "Sem data" no fim da lista). "A vencer" usa um neutro, não `STATUS` nem cor de bucket: ainda não pagar não é bom nem ruim.
+- **Gastos por tag:** ranking horizontal do valor comprometido por tag no mês, somando **todos os tipos** (usa `accountActiveInPeriod` + `account.tags`). Como a tag é do lançamento e um lançamento pode ter **várias**, o valor conta em cada tag (a soma pode passar do comprometido — avisado no subtítulo). Lançamentos sem tag caem no bucket neutro **"Sem tag"**; barras escaladas pela maior fatia. Cores vêm da própria tag; sem lançamentos com tag no mês → estado vazio com link p/ Finanças.
+- **Layout:** grid de duas colunas (`InsightGrid`) com medidores + distribuição lado a lado; colapsa em 1 coluna abaixo de 1024px.
+- **Ação rápida (⚡):** botão `QuickAddButton` no header abre o `QuickAddModal` (`src/components/QuickAddModal`) — cria um lançamento (mesmo form de recorrência/tags do `ExpenseBox`, cujos styled components são reusados) sem sair do Dashboard. Ao salvar, `onCreated(tipo)` chama `fetchAccounts()` do hook daquele tipo para atualizar o resumo na hora.
 - **Paleta categórica** (validada p/ CVD/contraste na superfície roxa): Contas `#3987e5`, Investimentos `#199e70`, Opcionais `#c98500`, Metas `#d55181`. Cores de status são fixas e nunca reutilizadas como cor de série.
-- **Estado vazio:** sem salário configurado → aviso com link p/ `/dados` (medidores ficam sem limite; distribuição ainda funciona).
+- **Estado vazio:** sem salário configurado → aviso com link p/ `/Settings` (medidores ficam sem limite; distribuição ainda funciona).
+- **Carregando:** `loading` é o **ou** das cinco fontes (salário + os quatro `useAccounts`) — a tela só aparece com tudo pronto. Enquanto isso, o `Loader` (ver seção *Loader*) **sozinho, sem card nem texto**, centrado na sobra da tela pelo `LoaderArea` (`flex: 1` + `place-items: center`; o `min-height: 50vh` é para o mobile, onde o `Content` tem altura automática e não há sobra para esticar).
 
 ## Metas (`src/pages/Metas`)
 
@@ -287,6 +383,46 @@ Notificações globais. `ToastProvider` (montado no `main.jsx`) renderiza a fila
 
 > **Ao testar animação de toast no navegador:** aba em segundo plano (`document.visibilityState === "hidden"`) congela animações CSS e estrangula timers — a barra aparece travada em `scaleX(1)` e as medições de tempo saem distorcidas. Meça com a aba visível.
 
+## Card dos hubs (`src/components/Card`)
+
+Card de Finanças (Contas, Investimentos, Opcionais, Importar Extrato) e Configurações (Perfil, Dados, Alterar Senha, Sair).
+
+```jsx
+<Cards name="Contas" subtitle="Despesas fixas do mês" hint="60% do plano" svgContent={<svg …/>} />
+```
+
+**Em repouso mostra só o ícone.** No hover o ícone cresce (30% → 65%), borra (`blur(7px)`) e flutua enquanto o texto aparece por cima; o card escala 1.04 com rotação de -1°. `subtitle`/`hint` são opcionais (`hint` é a linha em destaque, `--Complementar`).
+
+- **O texto só existe no hover — daí duas saídas:** `a:focus-visible &` para teclado (a regra sobe um nível porque o card **não** é focável; quem recebe foco é o `<Link>`/`<div>` ancestral, então `:focus-within` não serviria), e `@media (hover: none)` para toque, onde o card volta ao layout empilhado com ícone e texto visíveis — senão no celular seriam ícones mudos.
+- **`overflow: hidden` é obrigatório:** o ícone cresce e borra; sem ele o borrão vaza pelas bordas arredondadas.
+- **O CSS vence o `width`/`height` do `<svg>`** (os ícones chegam com tamanho fixo) — é isso que os deixa crescer; `width: auto` preserva a proporção.
+- **A prop `variant="preencherFill"` não existe mais:** ela escurecia o ícone no hover do desenho antigo. Se aparecer numa chamada, é resquício.
+- Do design original ficou só a estrutura; cores e tipografia são as do sistema. Os percentuais (60/20/10) são **texto escrito à mão**, não derivados de `BUDGET`.
+
+## Loader (`src/components/Loader`)
+
+Indicador de carregamento **único do sistema** — quatro bolas pulsando em onda, na cor `--Complementar`. Nenhuma tela deve escrever "Carregando…" solto de novo.
+
+```jsx
+<Loader />                          // só as bolas
+<Loader label="Lendo arquivo…" />   // texto opcional, abaixo delas
+```
+
+| Tela | Onde | Rótulo |
+|---|---|---|
+| Dashboard | `LoaderArea`, centrado na sobra da tela | — |
+| `ExpenseBox` (Contas/Investimentos/Opcionais) | `LoaderArea`, centrado no card | — |
+| Metas | `Loading`, no lugar da lista | — |
+| Importar Extrato | dentro da `DropZone` | "Lendo arquivo…" |
+
+- **O loader é ADIADO e tem permanência mínima (`src/hooks/useDeferredLoading.js`):** `const showLoader = useDeferredLoading(loading)` — **500ms de carência** antes de aparecer e **600ms mínimos** na tela depois de aparecer. Trocar de aba nas finanças resolve dentro da carência; e a permanência existe porque só a carência não bastava: um carregamento pouco acima dela mostrava o loader por dois ou três frames — a espera sumia, o **lampejo** não. Assim a percepção vira binária: ou não aparece, ou fica tempo de ser lido como intencional. Durante a carência a moldura (card/área) continua em pé, só sem conteúdo; o loader entra com fade (`softEnter`, 0.35s). **Ao mexer no hook:** o ramo de `loading` sai cedo se o loader já está visível — reagendar ali reescreveria o instante de entrada e esticaria a permanência a cada render.
+- **A chegada dos dados é animada:** `contentEnter` (`src/styles/animations.js`) — 0.24s de fade + 6px de subida. Aplique **condicional** (`${(p) => p.$ready && contentEnter}`) quando o elemento existe nos dois estados: é a troca de classe que dispara a animação; fixa, ela rodaria só no mount. Em elementos que só existem carregados (a grade de Metas) pode ser fixa. O Dashboard ganhou um `Ready` envolvendo as seções só para isso — ele **repete o `gap` do `Content`**, porque as seções deixaram de ser filhas diretas dele.
+- **`label` é opcional e existe por acessibilidade:** com ele, o texto visível é o que o leitor de tela anuncia (`role="status"` + `aria-live`, bolas em `aria-hidden`); sem ele, o wrapper cai num `aria-label="Carregando"` próprio — **o anúncio nunca some, mesmo sem texto na tela**. Passar os dois duplica.
+- **A onda é feita de atrasos, não de keyframes diferentes:** 0.3s entre bolas; o anel sai 0.9s depois da **sua** bola (acompanha o encolhimento, não o crescimento). Mexer num delay isolado desmonta a onda.
+- **`prefers-reduced-motion`** desliga a animação e deixa as bolas paradas em opacidade decrescente.
+- **Centrar é de quem usa:** o componente não se posiciona — cada tela envolve num wrapper com `place-items: center` e alguma altura, porque a sobra disponível é diferente em cada uma.
+- **Botões de submit ficam de fora de propósito** ("Salvando…", "Entrando…", "Importando…"): o botão já fica `disabled` e o verbo diz **o que** está acontecendo, coisa que quatro bolas não dizem — além de a troca mudar a largura do botão no meio do clique.
+
 ## Estilo Global (`src/styles/globalStyles.js`)
 
 **Variáveis CSS (`:root`):**
@@ -302,6 +438,7 @@ Notificações globais. `ToastProvider` (montado no `main.jsx`) renderiza a fila
 **Classes utilitárias:**
 - `.frame` — Grid `auto 1fr` (sidebar Nav + conteúdo)
 - `.containerExpenses` — Flex column, padding 5rem, gap 4rem (wrapper das páginas de despesa)
+- `.pageHead` — Título + `FinanceTabs` na mesma linha (`space-between`, com wrap). Existe para as abas não custarem altura: como bloco à parte, o `gap: 4rem` do `.containerExpenses` as afastaria do título e empurraria a tabela para baixo
 - `.button2` / `.button3` — Botões roxo gradiente / branco
 - `.modalOverlay` / `.defaultModal` — Overlay fixo + modal centralizado
 
@@ -322,10 +459,13 @@ Notificações globais. `ToastProvider` (montado no `main.jsx`) renderiza a fila
 
 ## Bugs / Pendências Conhecidas
 
+> Lista completa e priorizada em `../Vault/07-Limites/Pendencias.md`.
+
 | Item | Detalhe |
 |---|---|
 | Social login placeholder | Botões Google/Apple/Microsoft na tela de login são não-funcionais |
-| Salário — confirmar backend | Modal de `/Dados` faz `POST /financas/salary`; validar se o backend implementa |
-| Perfil — confirmar backend | Modal de Perfil (em `/Dados`) faz `PUT /security/profile`; validar se o backend implementa |
+| `baseURL` hardcoded | `src/services/api.js` aponta para `http://localhost:8000/api` no código — sem `VITE_API_URL`. Impede deploy sem editar código |
+| Perfil sem validação de e-mail duplicado | `PUT /security/profile` confia na constraint → e-mail já existente estoura `IntegrityError` (500) em vez de 400 |
+| Modais de Perfil/Salário abrem vazios | Em `/Settings`, não carregam salário/perfil atuais — o usuário não vê o que está configurado |
 
-**Resolvidos recentemente:** logout agora limpa o token (`localStorage.removeItem('authToken')` em `Settings`); Perfil deixou de ser página e virou modal em `/Dados` com submit real via API.
+**Resolvidos:** logout limpa o token; Perfil virou modal (hoje em `/Settings`) com submit real; **os endpoints de salário (`POST /financas/salary`) e perfil (`PUT /security/profile`) existem e estão implementados** — a antiga pendência de "confirmar backend" está encerrada.
