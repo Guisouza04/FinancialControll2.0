@@ -37,6 +37,7 @@ export const ModalText = styled.p`
 
 export const ModalButtons = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   justify-content: center;
 `;

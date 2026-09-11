@@ -1,7 +1,8 @@
 import { createContext, useContext } from "react";
 
 // Context de confirmação. Expõe uma função `confirm(options)` que
-// retorna uma Promise<boolean> — substituto elegante para window.confirm.
+// retorna Promise<boolean> nas confirmações tradicionais ou o valor escolhido
+// quando o diálogo recebe múltiplas ações.
 // O provider fica em `src/components/ConfirmDialog`.
 export const ConfirmContext = createContext(null);
 

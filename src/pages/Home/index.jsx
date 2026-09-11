@@ -9,6 +9,7 @@ import { useDeferredLoading } from "../../hooks/useDeferredLoading";
 import financeService from "../../services/financeService";
 import {
   sumActiveInPeriod,
+  occurrenceValue,
   accountActiveInPeriod,
   isPaidInPeriod,
 } from "../../utils/recurrence";
@@ -347,7 +348,7 @@ function Dashboard() {
     for (const b of BUDGET) {
       for (const acc of accountsByTipo[b.tipo] || []) {
         if (!accountActiveInPeriod(acc, year, month)) continue;
-        const value = Number(acc.value) || 0;
+        const value = occurrenceValue(acc, year, month);
         count += 1;
 
         if (isPaidInPeriod(acc, year, month)) {
@@ -430,7 +431,7 @@ function Dashboard() {
     const map = new Map(); // id -> { id, nome, cor, total }
     let untagged = 0;
     for (const acc of all) {
-      const value = Number(acc.value) || 0;
+      const value = occurrenceValue(acc, year, month);
       const tags = Array.isArray(acc.tags) ? acc.tags : [];
       if (tags.length === 0) {
         untagged += value;

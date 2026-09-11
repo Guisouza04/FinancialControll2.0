@@ -481,6 +481,19 @@ export const FaturaTag = styled.span`
   white-space: nowrap;
 `;
 
+export const AdjustedValueTag = styled.span`
+  display: block;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(164, 93, 231, 0.14);
+  color: #cda5f2;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+`;
+
 /* Chips de tag (somente leitura) exibidos na coluna Nome da tabela. */
 export const TagList = styled.span`
   display: inline-flex;

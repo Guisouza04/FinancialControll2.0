@@ -23,6 +23,7 @@ import { CheckboxField } from "./styles";
 import { SectionLabel } from "./styles";
 import { TotalBar } from "./styles";
 import { FaturaTag } from "./styles";
+import { AdjustedValueTag } from "./styles";
 import { TagList } from "./styles";
 import { TagChip } from "./styles";
 import { TagField } from "./styles";
@@ -51,6 +52,8 @@ import {
   isActiveInPeriod,
   occurrenceLabel,
   occurrenceCompetencia,
+  occurrenceCount,
+  occurrenceValue,
   isPaidInPeriod,
 } from "../../utils/recurrence";
 import Select from "../Select";
@@ -115,6 +118,7 @@ const ExpenseBox = ({ tipo }) => {
     updateAccount,
     deleteAccount,
     togglePaymentStatus,
+    updateInstallmentValue,
   } = useAccounts(tipo, filterYear, filterMonth);
 
   // Loader só depois do limiar — ver useDeferredLoading.
@@ -139,6 +143,8 @@ const ExpenseBox = ({ tipo }) => {
   const [startM, setStartM] = useState(currentMonth);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [installmentEdit, setInstallmentEdit] = useState(null);
+  const [installmentValueDigits, setInstallmentValueDigits] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Itens por página calculados dinamicamente pela altura disponível da tabela.
@@ -243,7 +249,7 @@ const ExpenseBox = ({ tipo }) => {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (account) => {
+  const openGlobalEditModal = (account) => {
     const d = deriveRecurrenceForm(account);
     setFormTipo(String(account.tipo ?? tipo));
     setNaFatura(Boolean(account.naFatura));
@@ -261,6 +267,60 @@ const ExpenseBox = ({ tipo }) => {
     setStartM(d.startMonth);
     setEditId(account.id);
     setIsModalOpen(true);
+  };
+
+  const openEditModal = async (account) => {
+    const competencia = occurrenceCompetencia(account, filterYear, filterMonth);
+    const hasMultipleOccurrences = occurrenceCount(account) > 1;
+
+    if (competencia && hasMultipleOccurrences) {
+      const [year, month] = competencia.split("-");
+      const scope = await confirm({
+        title: "Editar lançamento recorrente",
+        message: `Deseja alterar somente ${monthLabel(month)}/${year} ou o valor padrão das parcelas?`,
+        cancelText: "Cancelar",
+        choices: [
+          { value: "single", label: `Somente ${monthLabel(month)}/${year}` },
+          { value: "all", label: "Valor padrão" },
+        ],
+      });
+      if (!scope) return;
+      if (scope === "single") {
+        setInstallmentEdit({ account, competencia });
+        setInstallmentValueDigits(
+          reaisToDigits(occurrenceValue(account, filterYear, filterMonth))
+        );
+        return;
+      }
+    }
+
+    openGlobalEditModal(account);
+  };
+
+  const closeInstallmentModal = () => {
+    setInstallmentEdit(null);
+    setInstallmentValueDigits("");
+  };
+
+  const handleInstallmentSubmit = async (e) => {
+    e.preventDefault();
+    if (!installmentEdit || !hasPositiveValue(installmentValueDigits)) {
+      toast.warning("Informe um valor maior que zero.");
+      return;
+    }
+
+    const result = await updateInstallmentValue(
+      installmentEdit.account.id,
+      installmentEdit.competencia,
+      digitsToApiValue(installmentValueDigits)
+    );
+    if (result.success) {
+      const [year, month] = installmentEdit.competencia.split("-");
+      toast.success(`Valor de ${monthLabel(month)}/${year} atualizado.`);
+      closeInstallmentModal();
+    } else {
+      toast.error(result.error);
+    }
   };
 
   const closeModal = () => {
@@ -554,11 +614,17 @@ const ExpenseBox = ({ tipo }) => {
   // você deve no mês não muda porque você digitou uma palavra). `naFatura` é só
   // um marcador (compra de cartão) e conta normalmente — a regra antiga de "não
   // somar" foi aposentada com a itemização via importação de extrato.
-  const totalPayable = filteredAccounts.reduce((sum, a) => sum + a.value, 0);
+  const totalPayable = filteredAccounts.reduce(
+    (sum, a) => sum + occurrenceValue(a, filterYear, filterMonth),
+    0
+  );
   // Quanto do total são compras de cartão (informativo — já incluído acima).
   const totalInFatura = filteredAccounts
     .filter((a) => a.naFatura)
-    .reduce((sum, a) => sum + a.value, 0);
+    .reduce(
+      (sum, a) => sum + occurrenceValue(a, filterYear, filterMonth),
+      0
+    );
   const totalLabel = tipo === 2 ? "Total investido" : "Total a pagar";
   const periodLabel = filterMonth
     ? `${monthLabel(filterMonth)}/${filterYear}`
@@ -709,6 +775,22 @@ const ExpenseBox = ({ tipo }) => {
             )}
             {paginatedAccounts.map((account) => {
               const paid = isPaidInPeriod(account, filterYear, filterMonth);
+              const effectiveValue = occurrenceValue(
+                account,
+                filterYear,
+                filterMonth
+              );
+              const competencia = occurrenceCompetencia(
+                account,
+                filterYear,
+                filterMonth
+              );
+              const hasAdjustedValue = Boolean(
+                competencia &&
+                  account.valoresCompetencia?.some(
+                    (entry) => entry.competencia === competencia
+                  )
+              );
               return (
                 <tr key={account.id}>
                   <Td className="name-column">
@@ -737,7 +819,16 @@ const ExpenseBox = ({ tipo }) => {
                       </TagList>
                     )}
                   </Td>
-                  <Td className="value-column">{formatBRL(account.value)}</Td>
+                  <Td className="value-column">
+                    {formatBRL(effectiveValue)}
+                    {hasAdjustedValue && (
+                      <AdjustedValueTag
+                        title={`Valor padrão: ${formatBRL(account.value)}`}
+                      >
+                        ajustado
+                      </AdjustedValueTag>
+                    )}
+                  </Td>
                   <Td className="months-column">{formatParcelas(account)}</Td>
                   <Td className="status-column">
                     <span
@@ -973,6 +1064,62 @@ const ExpenseBox = ({ tipo }) => {
                   </button>
                   <button className="button2" type="submit">
                     Salvar
+                  </button>
+                </ModalButtons>
+              </Form>
+            </ModalContent>
+          </div>
+        </ModalPortal>
+      )}
+
+      {installmentEdit && (
+        <ModalPortal>
+          <div className="modalOverlay">
+            <ModalContent className="defaultModal">
+              <ModalTitle>Valor desta parcela</ModalTitle>
+              <Form onSubmit={handleInstallmentSubmit}>
+                <FormBody>
+                  <Field $full>
+                    <FieldLabel>Lançamento</FieldLabel>
+                    <strong>{installmentEdit.account.name}</strong>
+                  </Field>
+                  <Field $full>
+                    <FieldLabel>
+                      Valor em {monthLabel(installmentEdit.competencia.slice(5))}/
+                      {installmentEdit.competencia.slice(0, 4)}
+                    </FieldLabel>
+                    <RequiredField>
+                      <input
+                        autoFocus
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00"
+                        value={formatDigitsAsBRL(installmentValueDigits)}
+                        onChange={(e) =>
+                          setInstallmentValueDigits(
+                            e.target.value.replace(/\D/g, "")
+                          )
+                        }
+                      />
+                    </RequiredField>
+                  </Field>
+                  <Field $full>
+                    <small>
+                      Valor padrão: {formatBRL(installmentEdit.account.value)}.
+                      As demais parcelas não serão alteradas.
+                    </small>
+                  </Field>
+                </FormBody>
+                <ModalButtons>
+                  <button
+                    className="button3"
+                    type="button"
+                    onClick={closeInstallmentModal}
+                  >
+                    Cancelar
+                  </button>
+                  <button className="button2" type="submit">
+                    Salvar somente esta parcela
                   </button>
                 </ModalButtons>
               </Form>

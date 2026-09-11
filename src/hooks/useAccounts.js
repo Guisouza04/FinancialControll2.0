@@ -145,6 +145,27 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
     }
   };
 
+  const updateInstallmentValue = async (id, competencia, value) => {
+    try {
+      const updated = await financeService.updateInstallmentValue(
+        id,
+        competencia,
+        value
+      );
+      const transformed = transformAccount(updated);
+      setAccounts((prev) =>
+        prev.map((account) => (account.id === id ? transformed : account))
+      );
+      return { success: true, data: transformed };
+    } catch (err) {
+      console.error("Erro ao atualizar valor da parcela:", err);
+      return {
+        success: false,
+        error: err.response?.data?.error || "Erro ao atualizar valor da parcela",
+      };
+    }
+  };
+
   return {
     accounts,
     loading,
@@ -154,6 +175,7 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
     updateAccount,
     deleteAccount,
     togglePaymentStatus,
+    updateInstallmentValue,
   };
 };
 

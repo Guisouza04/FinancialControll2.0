@@ -111,6 +111,16 @@ Cadastro: `POST /security/signup` com `{ CPF, email, password, confirmPassword }
 
 ## Tipo: Mapeamento Central
 
+## Valor por competência
+
+`account.value` é o valor padrão do lançamento. Em cálculos que representam um
+mês específico, use `occurrenceValue(account, year, month)`: ele aplica uma
+eventual exceção de `valoresCompetencia` sem alterar as demais parcelas.
+O `ExpenseBox` oferece a escolha entre editar somente a competência filtrada ou
+abrir a edição global. Metas (tipo 4) não aceitam valores variáveis nesta versão.
+
+Ver `../Vault/01-Dominio/Valor-por-Competencia.md` e ADR-008.
+
 O parâmetro `tipo` é o mecanismo central que conecta páginas, endpoints e o `ExpenseBox`:
 
 | tipo | Categoria | Endpoint da API | Página |

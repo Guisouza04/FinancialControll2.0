@@ -312,7 +312,10 @@ export const accountActiveInPeriod = (account, filterYear, filterMonth) => {
 export const sumActiveInPeriod = (accounts, filterYear, filterMonth) =>
   (accounts || [])
     .filter((a) => accountActiveInPeriod(a, filterYear, filterMonth))
-    .reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+    .reduce(
+      (sum, a) => sum + occurrenceValue(a, filterYear, filterMonth),
+      0
+    );
 
 /**
  * Competência ("YYYY-MM") da ocorrência exibida no período filtrado.
@@ -349,6 +352,21 @@ export const occurrenceCompetencia = (account, filterYear, filterMonth) => {
   // Legado (sem recorrência): usa o mês/ano do filtro.
   if (fy && fm) return `${fy}-${pad(fm)}`;
   return null;
+};
+
+/**
+ * Valor efetivo da ocorrência exibida. Sem competência única (ex.: "Todos os
+ * meses") mantém o valor padrão, pois não há uma parcela específica a resolver.
+ */
+export const occurrenceValue = (account, filterYear, filterMonth) => {
+  const baseValue = Number(account.value) || 0;
+  const competencia = occurrenceCompetencia(account, filterYear, filterMonth);
+  if (!competencia || !Array.isArray(account.valoresCompetencia)) return baseValue;
+
+  const override = account.valoresCompetencia.find(
+    (entry) => entry.competencia === competencia
+  );
+  return override ? Number(override.value) || 0 : baseValue;
 };
 
 /**
