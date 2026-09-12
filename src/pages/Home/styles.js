@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { Link } from "react-router-dom";
 import { contentEnter } from "../../styles/animations";
 
-/* Atalho 👁 no fim da linha (medidor ou legenda) para a tela da finança.
+/* Atalho de visualização no fim da linha (medidor ou legenda) para a tela da finança.
    É um <Link> de verdade — abre em nova aba com ctrl/meio-clique de graça. */
 export const EyeLink = styled(Link)`
   display: inline-flex;
@@ -108,7 +108,7 @@ export const MonthNavButton = styled.button`
   }
 `;
 
-// Botão de criação rápida (⚡) no header — cria um lançamento sem sair do
+// Botão de criação rápida no header: cria um lançamento sem sair do
 // Dashboard. Gradiente da marca para se destacar como ação primária.
 export const QuickAddButton = styled.button`
   flex: 0 0 auto;
@@ -240,7 +240,7 @@ export const MeterHead = styled.div`
   gap: 1rem;
 `;
 
-/* Lado direito do cabeçalho do medidor: o valor gasto e o 👁. Sem esse
+/* Lado direito do cabeçalho do medidor: o valor gasto e o atalho. Sem esse
    agrupamento, o `space-between` do MeterHead com três filhos jogaria o valor
    para o centro. */
 export const MeterHeadRight = styled.div`
@@ -313,7 +313,7 @@ export const MeterHint = styled.span`
   font-variant-numeric: tabular-nums;
 `;
 
-/* Agrupa o "% da fatia" e o 👁 do lado direito do rodapé. Sem esse agrupamento,
+/* Agrupa o "% da fatia" e o atalho do lado direito do rodapé. Sem esse agrupamento,
    o `space-between` do MeterFoot com três filhos jogaria o hint para o centro. */
 export const MeterFootRight = styled.span`
   display: inline-flex;
@@ -404,7 +404,7 @@ export const Legend = styled.div`
   width: 100%;
 `;
 
-/* A última coluna (2.6rem) é a do 👁 — o cabeçalho precisa dela, ainda que
+/* A última coluna (2.6rem) é a do atalho de visualização; o cabeçalho precisa dela, ainda que
    vazia, senão as colunas do corpo desalinham do título. */
 export const LegendHeadRow = styled.div`
   display: grid;
@@ -464,7 +464,7 @@ export const LegendRow = styled.div`
     font-variant-numeric: tabular-nums;
   }
 
-  /* No mobile o "Plano" sai, mas o 👁 fica — ele é atalho, não informação. */
+  /* No mobile o "Plano" sai, mas o atalho fica: ele é ação, não informação. */
   @media (max-width: 460px) {
     grid-template-columns: 1fr auto 4.5rem 2.6rem;
     .plano {

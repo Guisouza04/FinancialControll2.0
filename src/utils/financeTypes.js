@@ -4,7 +4,7 @@
    Fonte ÚNICA desse mapa. Antes ele existia só dentro do `BUDGET` do Dashboard,
    e a rota de cada bucket aparecia solta em `App.jsx`, no hub de Finanças e no
    Nav — três lugares para sair de sincronia. Quem precisa navegar entre tipos
-   (FinanceTabs, o 👁 do Dashboard) lê daqui.
+   (FinanceTabs e o atalho de visualização do Dashboard) lê daqui.
 
    `color` é a paleta categórica validada para a superfície roxa (contraste +
    CVD). As cores de status (`good`/`warning`/`critical`) nunca entram aqui:

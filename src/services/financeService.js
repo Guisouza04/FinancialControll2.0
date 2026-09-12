@@ -192,7 +192,7 @@ export const transformAccount = (item) => ({
   durationMonths: item.qtd_parcelas,
   tipo: item.tipo,
   contaPaga: item.conta_paga || "N",
-  // True = compra de cartão (importada ou marcada). Hoje é só marcador (💳);
+  // True = compra de cartão (importada ou marcada). Hoje é só um marcador;
   // conta normalmente no total. `dataCompra` = data original da compra.
   naFatura: Boolean(item.na_fatura),
   dataCompra: item.data_compra || null,

@@ -45,7 +45,7 @@ const MONTH_NAMES = [
 ];
 
 /**
- * Modal de criação rápida de lançamento, acionado do Dashboard (⚡) — evita ter
+ * Modal de criação rápida de lançamento, acionado pelo Dashboard; evita ter
  * que navegar até as telas de Finanças. Cria via `financeService.createAccount`
  * e chama `onCreated(tipo)` para o Dashboard recarregar os dados daquele tipo.
  *

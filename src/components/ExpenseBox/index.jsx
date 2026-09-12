@@ -105,7 +105,7 @@ const ExpenseBox = ({ tipo }) => {
   const [filterTagId, setFilterTagId] = useState(""); // "" = todas as tags
   // Busca por texto — aplicada DEPOIS dos filtros acima (ver `visibleAccounts`).
   const [search, setSearch] = useState("");
-  // O campo de busca fica escondido atrás da 🔍; a barra de filtros já é longa e
+  // O campo de busca fica escondido atrás do botão de busca; a barra de filtros já é longa e
   // buscar é eventual, não parte do fluxo de todo acesso.
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef(null);
@@ -364,7 +364,7 @@ const ExpenseBox = ({ tipo }) => {
       de_conta: name,
       vl_conta: digitsToApiValue(valueDigits),
       tipo: chosenTipo,
-      // Marcador de compra de cartão (💳) — vale para qualquer tipo.
+      // Marcador de compra de cartão, válido para qualquer tipo.
       na_fatura: naFatura,
       // Conjunto completo de tags do lançamento (backend substitui, não faz delta).
       tag_ids: selectedTagIds,

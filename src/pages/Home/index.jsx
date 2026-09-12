@@ -99,7 +99,7 @@ const DUE_LIST_LIMIT = 6;
 //   metas        → meta de 10%
 // Rótulo, cor e rota vêm de FINANCE_TYPES — são identidade do tipo, não do
 // orçamento, e são compartilhados com o FinanceTabs. `route` alimenta o atalho
-// do 👁 nas duas seções (medidores e legenda), já que `buckets` faz spread
+// do atalho de visualização nas duas seções (medidores e legenda), já que `buckets` faz spread
 // destes objetos.
 const PLANO = { 1: { pct: 60, kind: "teto" }, 2: { pct: 20, kind: "meta" },
                 3: { pct: 10, kind: "teto" }, 4: { pct: 10, kind: "meta" } };
@@ -227,7 +227,7 @@ function Dashboard() {
     setMonth(String(now.getMonth() + 1).padStart(2, "0"));
   };
 
-  // Após criar um lançamento pela ação rápida (⚡), recarrega os dados do tipo
+  // Após criar um lançamento pela ação rápida, recarrega os dados do tipo
   // criado para o resumo/medidores/tags refletirem na hora.
   const handleQuickCreated = (tipo) => {
     const hooks = { 1: contas, 2: investimentos, 3: opcionais, 4: metas };

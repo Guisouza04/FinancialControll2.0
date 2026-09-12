@@ -118,7 +118,7 @@ export const SearchArea = styled.span`
   }
 `;
 
-/* 🔍 ao lado do "Mês Atual": revela/esconde o campo de busca. A busca é uso
+/* Botão ao lado do "Mês Atual": revela/esconde o campo de busca. A busca é uso
    eventual e a barra de filtros já é longa — deixá-la sempre visível custava uma
    linha inteira do Toolbar por um campo quase sempre vazio.
 
