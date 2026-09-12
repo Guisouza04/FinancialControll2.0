@@ -88,6 +88,23 @@ const financeService = {
     return response.data?.data ?? response.data;
   },
 
+  /** Define o valor excepcional de uma única competência. */
+  async updateInstallmentValue(id, competencia, value) {
+    const response = await api.put(`/financas/installment-value/${id}`, {
+      competencia,
+      vl_parcela: value,
+    });
+    return response.data;
+  },
+
+  /** Remove a exceção e restaura o valor padrão da competência. */
+  async deleteInstallmentValue(id, competencia) {
+    const response = await api.delete(
+      `/financas/installment-value/${id}/${competencia}`
+    );
+    return response.data;
+  },
+
   /**
    * Envia o conteúdo textual de um arquivo OFX e recebe as transações
    * interpretadas para a tela de revisão (nada é gravado ainda).
@@ -175,13 +192,19 @@ export const transformAccount = (item) => ({
   durationMonths: item.qtd_parcelas,
   tipo: item.tipo,
   contaPaga: item.conta_paga || "N",
-  // True = compra de cartão (importada ou marcada). Hoje é só marcador (💳);
+  // True = compra de cartão (importada ou marcada). Hoje é só um marcador;
   // conta normalmente no total. `dataCompra` = data original da compra.
   naFatura: Boolean(item.na_fatura),
   dataCompra: item.data_compra || null,
   // Competências pagas ("YYYY-MM") — status por parcela (modelo A). Quando o
   // backend ainda não envia, fica null e a UI cai no `contaPaga` legado.
   pagamentos: Array.isArray(item.pagamentos) ? item.pagamentos : null,
+  valoresCompetencia: Array.isArray(item.valores_competencia)
+    ? item.valores_competencia.map((entry) => ({
+        competencia: entry.competencia,
+        value: parseFloat(entry.vl_parcela),
+      }))
+    : [],
   // Tags associadas [{ id, nome, cor }]. Categorização livre do usuário.
   tags: Array.isArray(item.tags) ? item.tags : [],
   // Campos de recorrência (backend em alinhamento). Ausentes em registros legados.

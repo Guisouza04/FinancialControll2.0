@@ -11,7 +11,10 @@ import {
 // Provider global de confirmação. Expõe `confirm(options)` que devolve uma
 // Promise<boolean> — resolve `true` ao confirmar, `false` ao cancelar.
 //
-// options: { title, message?, confirmText?, cancelText?, danger? }
+// options: { title, message?, confirmText?, cancelText?, danger?, choices? }
+// `choices` permite decisões com mais de uma ação e resolve com o `value`
+// escolhido. O modo tradicional continua resolvendo boolean para não quebrar
+// os consumidores existentes.
 export function ConfirmProvider({ children }) {
   // state guarda as opções do diálogo + a função `resolve` da Promise atual.
   const [state, setState] = useState(null);
@@ -37,7 +40,7 @@ export function ConfirmProvider({ children }) {
     if (!state) return;
     const onKey = (e) => {
       if (e.key === "Escape") close(false);
-      else if (e.key === "Enter") close(true);
+      else if (e.key === "Enter" && !state.options.choices) close(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -50,6 +53,7 @@ export function ConfirmProvider({ children }) {
     confirmText = "Confirmar",
     cancelText = "Cancelar",
     danger = false,
+    choices = null,
   } = options;
 
   return (
@@ -63,18 +67,39 @@ export function ConfirmProvider({ children }) {
           >
             <ModalTitle>{title}</ModalTitle>
             {message && <ModalText>{message}</ModalText>}
-            <ModalButtons>
-              <button className="button3" onClick={() => close(false)}>
-                {cancelText}
-              </button>
-              {danger ? (
-                <DangerButton onClick={() => close(true)}>
-                  {confirmText}
-                </DangerButton>
+            <ModalButtons $hasChoices={Boolean(choices)}>
+              {choices ? (
+                <>
+                  <div className="choice-actions">
+                    {choices.map((choice) => (
+                      <button
+                        key={choice.value}
+                        className={choice.className || "button2"}
+                        onClick={() => close(choice.value)}
+                      >
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="button3" onClick={() => close(false)}>
+                    {cancelText}
+                  </button>
+                </>
               ) : (
-                <button className="button2" onClick={() => close(true)}>
-                  {confirmText}
-                </button>
+                <>
+                  <button className="button3" onClick={() => close(false)}>
+                    {cancelText}
+                  </button>
+                  {danger ? (
+                    <DangerButton onClick={() => close(true)}>
+                      {confirmText}
+                    </DangerButton>
+                  ) : (
+                    <button className="button2" onClick={() => close(true)}>
+                      {confirmText}
+                    </button>
+                  )}
+                </>
               )}
             </ModalButtons>
           </ModalContent>

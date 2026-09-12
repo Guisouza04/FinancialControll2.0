@@ -6,9 +6,13 @@ import TituloPage from "../../components/Title";
 import Select from "../../components/Select";
 import BotaoPadrao from "../../components/Button";
 import DatePicker from "../../components/DatePicker";
+import Loader from "../../components/Loader";
 import financeService from "../../services/financeService";
 import { formatBRL } from "../../utils/currency";
+import { matchesSearch } from "../../utils/search";
 import { useToast } from "../../context/toast";
+// Mesmo campo de busca das tabelas de finanças.
+import { SearchInput } from "../../components/ExpenseBox/styles";
 import {
   Container,
   Panel,
@@ -17,6 +21,7 @@ import {
   Toolbar,
   FileTag,
   BulkBar,
+  Required,
   TableWrapper,
   Table,
   MovBadge,
@@ -66,6 +71,7 @@ function ImportarExtrato() {
   const [dueDate, setDueDate] = useState(""); // vencimento da fatura ("YYYY-MM-DD")
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [search, setSearch] = useState(""); // busca por descrição da transação
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -109,21 +115,41 @@ function ImportarExtrato() {
       prev.map((r) => (r._key === key ? { ...r, ...patch } : r))
     );
 
+  // Linhas que a busca deixa passar. Ações em massa e o checkbox do cabeçalho
+  // agem sobre ELAS, não sobre `rows`: marcar "todas" com a busca ativa não pode
+  // mexer no que o usuário não está vendo.
+  const visibleRows = useMemo(
+    () => rows.filter((r) => matchesSearch(search, r.descricao)),
+    [rows, search]
+  );
+  const visibleKeys = useMemo(
+    () => new Set(visibleRows.map((r) => r._key)),
+    [visibleRows]
+  );
+
   const applyTipoToSelected = (tipo) =>
     setRows((prev) =>
-      prev.map((r) => (r.include ? { ...r, tipo } : r))
+      prev.map((r) => (r.include && visibleKeys.has(r._key) ? { ...r, tipo } : r))
     );
 
   const toggleAll = (include) =>
-    setRows((prev) => prev.map((r) => ({ ...r, include })));
+    setRows((prev) =>
+      prev.map((r) => (visibleKeys.has(r._key) ? { ...r, include } : r))
+    );
 
   const selected = useMemo(() => rows.filter((r) => r.include), [rows]);
   const totalSelected = selected.reduce((s, r) => s + r.valor, 0);
+  // Selecionadas escondidas pela busca — o commit envia essas também, então o
+  // rodapé avisa em vez de deixar a conta "não bater" com a tela.
+  const hiddenSelected = selected.filter((r) => !visibleKeys.has(r._key)).length;
+  const allVisibleSelected =
+    visibleRows.length > 0 && visibleRows.every((r) => r.include);
 
   const clearFile = () => {
     setRows([]);
     setFileName("");
     setDueDate("");
+    setSearch("");
   };
 
   const handleCommit = async () => {
@@ -185,12 +211,19 @@ function ImportarExtrato() {
             <TituloPage titulo="Importar Extrato" />
             {intro}
             <DropZone>
-              <strong>
-                {loading ? "Lendo arquivo…" : "📄 Selecionar arquivo OFX"}
-              </strong>
-              <span>
-                Clique para escolher um arquivo .ofx exportado do seu banco
-              </span>
+              {/* Aqui o Loader mantém o rótulo: a zona continua parecendo
+                  clicável, e só as bolinhas não diriam que o arquivo está
+                  sendo lido — nem que não adianta clicar de novo. */}
+              {loading ? (
+                <Loader label="Lendo arquivo…" />
+              ) : (
+                <>
+                  <strong>📄 Selecionar arquivo OFX</strong>
+                  <span>
+                    Clique para escolher um arquivo .ofx exportado do seu banco
+                  </span>
+                </>
+              )}
               <input
                 type="file"
                 accept=".ofx,application/x-ofx,text/plain"
@@ -219,7 +252,7 @@ function ImportarExtrato() {
                   style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}
                   title="Mês em que a fatura é paga — as compras entram nesse mês do orçamento"
                 >
-                  Vencimento da fatura:
+                  Vencimento da fatura<Required>*</Required>:
                   <span style={{ width: "16rem" }}>
                     <DatePicker
                       value={dueDate}
@@ -236,6 +269,13 @@ function ImportarExtrato() {
                   options={TIPO_OPTIONS}
                   placeholder="Escolher…"
                 />
+                <SearchInput
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar pela descrição…"
+                  aria-label="Buscar transação"
+                />
               </BulkBar>
             </Toolbar>
 
@@ -246,9 +286,13 @@ function ImportarExtrato() {
                     <th className="col-check">
                       <input
                         type="checkbox"
-                        checked={selected.length === rows.length}
+                        checked={allVisibleSelected}
                         onChange={(e) => toggleAll(e.target.checked)}
-                        title="Selecionar todas"
+                        title={
+                          search.trim()
+                            ? "Selecionar as transações da busca"
+                            : "Selecionar todas"
+                        }
                       />
                     </th>
                     <th>Data da compra</th>
@@ -259,7 +303,14 @@ function ImportarExtrato() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
+                  {visibleRows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: "center" }}>
+                        Nenhuma transação com “{search.trim()}”.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleRows.map((r) => (
                     <tr key={r._key} className={r.include ? "" : "excluded"}>
                       <td className="col-check">
                         <input
@@ -298,11 +349,14 @@ function ImportarExtrato() {
               <div className="summary">
                 <strong>{selected.length}</strong> selecionada(s) ·{" "}
                 <strong>{formatBRL(totalSelected)}</strong>
+                {hiddenSelected > 0 && (
+                  <> · {hiddenSelected} fora da busca</>
+                )}
               </div>
               <button
                 className="button2"
                 onClick={handleCommit}
-                disabled={committing || !selected.length || !dueDate}
+                disabled={committing}
               >
                 {committing ? "Importando…" : "Importar selecionadas"}
               </button>

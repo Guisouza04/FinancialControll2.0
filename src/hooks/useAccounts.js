@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import financeService, { transformAccount } from "../services/financeService";
+import { apiErrorMessage } from "../utils/apiError";
 
 /**
  * Hook customizado para gerenciar operações de contas
@@ -145,6 +146,30 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
     }
   };
 
+  const updateInstallmentValue = async (id, competencia, value) => {
+    try {
+      const updated = await financeService.updateInstallmentValue(
+        id,
+        competencia,
+        value
+      );
+      const transformed = transformAccount(updated);
+      setAccounts((prev) =>
+        prev.map((account) => (account.id === id ? transformed : account))
+      );
+      return { success: true, data: transformed };
+    } catch (err) {
+      console.error("Erro ao atualizar valor da parcela:", err);
+      return {
+        success: false,
+        error: apiErrorMessage(
+          err,
+          "Não foi possível salvar o valor desta parcela. Tente novamente."
+        ),
+      };
+    }
+  };
+
   return {
     accounts,
     loading,
@@ -154,6 +179,7 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
     updateAccount,
     deleteAccount,
     togglePaymentStatus,
+    updateInstallmentValue,
   };
 };
 

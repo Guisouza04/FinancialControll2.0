@@ -14,8 +14,9 @@ function Despesas() {
         <ContainerCards>
           <Link to="/contas">
             <Cards
-              variant="preencherFill"
               name="Contas"
+              subtitle="Despesas fixas do mês"
+              hint="60% do plano"
               svgContent={
                 <svg
                   width="60px"
@@ -33,8 +34,9 @@ function Despesas() {
           </Link>
           <Link to="/investments">
             <Cards
-              variant="preencherFill"
               name="Investimentos"
+              subtitle="Aportes e reservas"
+              hint="20% do plano"
               svgContent={
                 <svg
                   width="60px"
@@ -52,8 +54,9 @@ function Despesas() {
           </Link>
           <Link to="/optional">
             <Cards
-              variant="preencherFill"
               name="Opcionais"
+              subtitle="Gastos variáveis"
+              hint="10% do plano"
               svgContent={
                 <svg
                   width="60px"
@@ -71,8 +74,9 @@ function Despesas() {
           </Link>
           <Link to="/importar">
             <Cards
-              variant="preencherFill"
               name="Importar Extrato"
+              subtitle="Fatura de cartão em OFX"
+              hint="Revisão manual"
               svgContent={
                 <svg
                   width="60px"

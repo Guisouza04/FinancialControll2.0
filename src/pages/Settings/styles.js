@@ -8,10 +8,6 @@ export const Container = styled.div`
   gap: 5rem;
   padding: 5rem;
 
-  a {
-    align-self: center;
-  }
-
   @media (max-width: 768px) {
     gap: 2.5rem;
     padding: 2rem;
@@ -21,6 +17,9 @@ export const Container = styled.div`
 
 export const ContainerCards = styled.div`
   display: flex;
+  /* São 4 cards (Perfil, Dados, Alterar Senha, Sair): sem wrap eles estouram a
+     largura antes mesmo do breakpoint mobile. */
+  flex-wrap: wrap;
   justify-content: start;
   align-self: flex-start;
   gap: 5rem;

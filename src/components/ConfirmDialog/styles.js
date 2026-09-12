@@ -15,7 +15,7 @@ const popIn = keyframes`
 // animação sutil de entrada. Usa a classe global .defaultModal.
 export const ModalContent = styled.div`
   padding: 30px;
-  max-width: 400px;
+  max-width: 500px;
   width: 90%;
   text-align: center;
   animation: ${popIn} 0.24s var(--ease);
@@ -37,8 +37,28 @@ export const ModalText = styled.p`
 
 export const ModalButtons = styled.div`
   display: flex;
-  gap: 15px;
+  flex-wrap: wrap;
+  flex-direction: ${({ $hasChoices }) => ($hasChoices ? "column" : "row")};
+  align-items: center;
+  gap: ${({ $hasChoices }) => ($hasChoices ? "50px" : "15px")};
   justify-content: center;
+
+  .choice-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+
+  .choice-actions > button {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    padding-inline: 12px;
+    font-size: 14px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
 `;
 
 // Botão de confirmação vermelho para ações destrutivas (ex.: excluir).
