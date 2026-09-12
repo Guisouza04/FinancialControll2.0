@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import financeService, { transformAccount } from "../services/financeService";
+import { apiErrorMessage } from "../utils/apiError";
 
 /**
  * Hook customizado para gerenciar operações de contas
@@ -161,7 +162,10 @@ export const useAccounts = (tipo, filterYear = "", filterMonth = "") => {
       console.error("Erro ao atualizar valor da parcela:", err);
       return {
         success: false,
-        error: err.response?.data?.error || "Erro ao atualizar valor da parcela",
+        error: apiErrorMessage(
+          err,
+          "Não foi possível salvar o valor desta parcela. Tente novamente."
+        ),
       };
     }
   };
