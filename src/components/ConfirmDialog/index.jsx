@@ -67,28 +67,40 @@ export function ConfirmProvider({ children }) {
           >
             <ModalTitle>{title}</ModalTitle>
             {message && <ModalText>{message}</ModalText>}
-            <ModalButtons>
-              <button className="button3" onClick={() => close(false)}>
-                {cancelText}
-              </button>
-              {choices?.map((choice) => (
-                <button
-                  key={choice.value}
-                  className={choice.className || "button2"}
-                  onClick={() => close(choice.value)}
-                >
-                  {choice.label}
-                </button>
-              ))}
-              {!choices && (danger ? (
-                <DangerButton onClick={() => close(true)}>
-                  {confirmText}
-                </DangerButton>
+            <ModalButtons $hasChoices={Boolean(choices)}>
+              {choices ? (
+                <>
+                  <div className="choice-actions">
+                    {choices.map((choice) => (
+                      <button
+                        key={choice.value}
+                        className={choice.className || "button2"}
+                        onClick={() => close(choice.value)}
+                      >
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="button3" onClick={() => close(false)}>
+                    {cancelText}
+                  </button>
+                </>
               ) : (
-                <button className="button2" onClick={() => close(true)}>
-                  {confirmText}
-                </button>
-              ))}
+                <>
+                  <button className="button3" onClick={() => close(false)}>
+                    {cancelText}
+                  </button>
+                  {danger ? (
+                    <DangerButton onClick={() => close(true)}>
+                      {confirmText}
+                    </DangerButton>
+                  ) : (
+                    <button className="button2" onClick={() => close(true)}>
+                      {confirmText}
+                    </button>
+                  )}
+                </>
+              )}
             </ModalButtons>
           </ModalContent>
         </div>

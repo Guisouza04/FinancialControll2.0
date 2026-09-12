@@ -277,11 +277,11 @@ const ExpenseBox = ({ tipo }) => {
       const [year, month] = competencia.split("-");
       const scope = await confirm({
         title: "Editar lançamento recorrente",
-        message: `Deseja alterar somente ${monthLabel(month)}/${year} ou o valor padrão das parcelas?`,
+        message: `Como deseja aplicar a alteração de ${monthLabel(month)}/${year}?`,
         cancelText: "Cancelar",
         choices: [
-          { value: "single", label: `Somente ${monthLabel(month)}/${year}` },
-          { value: "all", label: "Valor padrão" },
+          { value: "single", label: "Somente essa parcela" },
+          { value: "all", label: "Todas as parcelas" },
         ],
       });
       if (!scope) return;

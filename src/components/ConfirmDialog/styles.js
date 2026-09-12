@@ -38,8 +38,22 @@ export const ModalText = styled.p`
 export const ModalButtons = styled.div`
   display: flex;
   flex-wrap: wrap;
+  flex-direction: ${({ $hasChoices }) => ($hasChoices ? "column" : "row")};
+  align-items: center;
   gap: 15px;
   justify-content: center;
+
+  .choice-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+
+  .choice-actions > button {
+    width: 100%;
+    white-space: nowrap;
+  }
 `;
 
 // Botão de confirmação vermelho para ações destrutivas (ex.: excluir).
