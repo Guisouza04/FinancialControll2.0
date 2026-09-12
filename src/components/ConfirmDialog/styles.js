@@ -15,7 +15,7 @@ const popIn = keyframes`
 // animação sutil de entrada. Usa a classe global .defaultModal.
 export const ModalContent = styled.div`
   padding: 30px;
-  max-width: 400px;
+  max-width: 500px;
   width: 90%;
   text-align: center;
   animation: ${popIn} 0.24s var(--ease);
@@ -40,7 +40,7 @@ export const ModalButtons = styled.div`
   flex-wrap: wrap;
   flex-direction: ${({ $hasChoices }) => ($hasChoices ? "column" : "row")};
   align-items: center;
-  gap: 15px;
+  gap: ${({ $hasChoices }) => ($hasChoices ? "50px" : "15px")};
   justify-content: center;
 
   .choice-actions {
