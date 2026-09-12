@@ -51,7 +51,12 @@ export const ModalButtons = styled.div`
   }
 
   .choice-actions > button {
+    box-sizing: border-box;
+    min-width: 0;
     width: 100%;
+    padding-inline: 12px;
+    font-size: 14px;
+    line-height: 1.2;
     white-space: nowrap;
   }
 `;
