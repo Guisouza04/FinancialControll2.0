@@ -61,6 +61,7 @@ import RequiredField from "../RequiredField";
 import TagPicker from "../TagPicker";
 import ModalPortal from "../ModalPortal";
 import { matchesSearch } from "../../utils/search";
+import { buildTagFilterOptions } from "../../utils/tagFilter";
 import { useToast } from "../../context/toast";
 import { useConfirm } from "../../context/confirm";
 
@@ -470,11 +471,9 @@ const ExpenseBox = ({ tipo }) => {
     return result;
   };
 
-  // Opções do filtro por tag: "Todas as tags" + uma entrada por tag.
-  const tagFilterOptions = [
-    { value: "", label: "Todas as tags" },
-    ...tags.map((t) => ({ value: String(t.id), label: t.nome })),
-  ];
+  // O filtro lista apenas tags usadas nos lançamentos deste tipo de finança.
+  // O seletor do formulário continua recebendo todas as tags do usuário.
+  const tagFilterOptions = buildTagFilterOptions(tags, accounts);
 
   // Navegação de período: avança/retrocede um mês, virando o ano quando passa
   // de dez/jan. Base no mês selecionado (ou no atual, se "Todos os meses").
