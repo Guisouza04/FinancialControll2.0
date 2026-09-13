@@ -49,7 +49,7 @@ import {
   validateRecurrence,
   buildRecurrencePayload,
   deriveRecurrenceForm,
-  isActiveInPeriod,
+  accountActiveInPeriod,
   occurrenceLabel,
   occurrenceCompetencia,
   occurrenceCount,
@@ -61,6 +61,7 @@ import RequiredField from "../RequiredField";
 import TagPicker from "../TagPicker";
 import ModalPortal from "../ModalPortal";
 import { matchesSearch } from "../../utils/search";
+import { buildTagFilterOptions } from "../../utils/tagFilter";
 import { useToast } from "../../context/toast";
 import { useConfirm } from "../../context/confirm";
 
@@ -470,11 +471,18 @@ const ExpenseBox = ({ tipo }) => {
     return result;
   };
 
-  // Opções do filtro por tag: "Todas as tags" + uma entrada por tag.
-  const tagFilterOptions = [
-    { value: "", label: "Todas as tags" },
-    ...tags.map((t) => ({ value: String(t.id), label: t.nome })),
-  ];
+  const periodAccounts = accounts.filter((account) =>
+    accountActiveInPeriod(account, filterYear, filterMonth)
+  );
+
+  // O filtro lista apenas tags usadas no tipo e período atuais. O seletor do
+  // formulário continua recebendo todas as tags do usuário.
+  const tagFilterOptions = buildTagFilterOptions(tags, periodAccounts);
+  const activeFilterTagId = tagFilterOptions.some(
+    (option) => String(option.value) === String(filterTagId)
+  )
+    ? filterTagId
+    : "";
 
   // Navegação de período: avança/retrocede um mês, virando o ano quando passa
   // de dez/jan. Base no mês selecionado (ou no atual, se "Todos os meses").
@@ -526,7 +534,7 @@ const ExpenseBox = ({ tipo }) => {
   };
 
   // Filtrar contas
-  const filteredAccounts = accounts.filter((account) => {
+  const filteredAccounts = periodAccounts.filter((account) => {
     // Filtro por status de pagamento — avaliado por competência (parcela).
     if (filterStatus) {
       const paid = isPaidInPeriod(account, filterYear, filterMonth) ? "S" : "N";
@@ -534,49 +542,13 @@ const ExpenseBox = ({ tipo }) => {
     }
 
     // Filtro por tag — mostra só lançamentos que têm a tag selecionada.
-    if (filterTagId) {
+    if (activeFilterTagId) {
       const has = (account.tags || []).some(
-        (t) => String(t.id) === String(filterTagId)
+        (t) => String(t.id) === String(activeFilterTagId)
       );
       if (!has) return false;
     }
 
-    // Contas com recorrência usam a regra (UNICA/MENSAL/ANUAL).
-    if (account.recorrencia) {
-      return isActiveInPeriod(account, filterYear, filterMonth);
-    }
-
-    // Legado: janela de meses consecutivos a partir do creationMonth.
-    const [startYear, startMonth] = account.creationMonth
-      .split("-")
-      .map(Number);
-    const startDate = new Date(startYear, startMonth - 1);
-    const endDate = new Date(startYear, startMonth - 1);
-    endDate.setMonth(endDate.getMonth() + account.durationMonths);
-
-    const filterYearNum = filterYear ? parseInt(filterYear) : null;
-    const filterMonthNum = filterMonth ? parseInt(filterMonth) : null;
-    const filterDate =
-      filterYearNum && filterMonthNum
-        ? new Date(filterYearNum, filterMonthNum - 1)
-        : null;
-
-    if (filterYearNum && filterMonthNum && filterDate) {
-      return filterDate >= startDate && filterDate < endDate;
-    } else if (filterYearNum) {
-      return (
-        startYear <= filterYearNum && endDate.getFullYear() >= filterYearNum
-      );
-    } else if (filterMonthNum) {
-      const accountMonths = Array.from(
-        { length: account.durationMonths },
-        (_, i) => {
-          const date = new Date(startYear, startMonth - 1 + i);
-          return date.getMonth() + 1;
-        }
-      );
-      return accountMonths.includes(filterMonthNum);
-    }
     return true;
   });
 
@@ -709,7 +681,7 @@ const ExpenseBox = ({ tipo }) => {
             placeholder="Todas"
           />
           <Select
-            value={filterTagId}
+            value={activeFilterTagId}
             onChange={setFilterTagId}
             options={tagFilterOptions}
             placeholder="Todas as tags"
