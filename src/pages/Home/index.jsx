@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import MenuNavecacao from "../../components/Nav";
 import Select from "../../components/Select";
 import QuickAddModal from "../../components/QuickAddModal";
 import Loader from "../../components/Loader";
+import ModalPortal from "../../components/ModalPortal";
+import { useToast } from "../../context/toast";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDeferredLoading } from "../../hooks/useDeferredLoading";
 import financeService from "../../services/financeService";
@@ -12,6 +14,7 @@ import {
   occurrenceValue,
   accountActiveInPeriod,
   isPaidInPeriod,
+  occurrenceCompetencia,
 } from "../../utils/recurrence";
 import { formatBRL } from "../../utils/currency";
 import { FINANCE_TYPES } from "../../utils/financeTypes";
@@ -72,6 +75,8 @@ import {
   DueName,
   DueRight,
   DueBadge,
+  DueMenu,
+  DueMenuItem,
   DueFoot,
   EmptyState,
   LoaderArea,
@@ -229,9 +234,113 @@ function Dashboard() {
 
   // Após criar um lançamento pela ação rápida, recarrega os dados do tipo
   // criado para o resumo/medidores/tags refletirem na hora.
+  const accountHooks = { 1: contas, 2: investimentos, 3: opcionais, 4: metas };
+
   const handleQuickCreated = (tipo) => {
-    const hooks = { 1: contas, 2: investimentos, 3: opcionais, 4: metas };
-    hooks[tipo]?.fetchAccounts();
+    accountHooks[tipo]?.fetchAccounts();
+  };
+
+  // ---------- Quitar pelo Dashboard (menu da lista de vencimentos) ----------
+  // `dueMenu` = { item, anchor, pos }. `anchor` é a linha que abriu o menu: o
+  // clique-fora a ignora, senão o mousedown fecharia e o click logo depois
+  // reabriria — a linha nunca conseguiria FECHAR o próprio menu.
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [dueMenu, setDueMenu] = useState(null);
+  const [payingKey, setPayingKey] = useState(null);
+  const dueMenuRef = useRef(null);
+
+  const openDueMenu = (item, anchor) => {
+    if (dueMenu?.item.key === item.key) {
+      setDueMenu(null);
+      return;
+    }
+    const r = anchor.getBoundingClientRect();
+    // Abre para baixo, alinhado à direita da linha (onde estão badge e valor).
+    // Sem ~140px livres embaixo, abre para cima — a lista fica no meio da
+    // tela, mas numa janela baixa a última linha encosta no rodapé.
+    const below = window.innerHeight - r.bottom > 140;
+    setDueMenu({
+      item,
+      anchor,
+      pos: {
+        right: Math.max(window.innerWidth - r.right, 8),
+        ...(below
+          ? { top: r.bottom + 6 }
+          : { bottom: window.innerHeight - r.top + 6 }),
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (!dueMenu) return;
+    // Foco no primeiro item: quem abriu pelo teclado já cai na ação.
+    dueMenuRef.current?.querySelector("button")?.focus();
+
+    const onDown = (e) => {
+      if (dueMenuRef.current?.contains(e.target)) return;
+      if (dueMenu.anchor.contains(e.target)) return;
+      setDueMenu(null);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        dueMenu.anchor.focus();
+        setDueMenu(null);
+      }
+    };
+    // Captura: o scroll que importa é o do Content (não o da janela), e evento
+    // de scroll não borbulha. A posição é fixa e foi medida na abertura —
+    // rolar sem fechar deixaria o menu solto, apontando para outra linha.
+    const onScroll = () => setDueMenu(null);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [dueMenu]);
+
+  // Marca a parcela do mês do Dashboard como paga. Mesmo caminho do toggle do
+  // ExpenseBox (`togglePaymentStatus` + `occurrenceCompetencia`) — o hook
+  // atualiza `pagamentos` localmente, então a linha sai da lista e a barra de
+  // quitação anda sem refetch.
+  //
+  // Sem o diálogo de confirmação do ExpenseBox de propósito: lá o ✅ é um clique
+  // só, e confirmar evita o acidente. Aqui já são dois cliques (linha → item do
+  // menu), e o item nomeia a ação; um terceiro passo só atrasaria. Desfazer
+  // continua sendo pela tela da finança.
+  const handleMarkPaid = async (item) => {
+    setDueMenu(null);
+    // Com mês e ano sempre definidos no Dashboard, a competência só seria null
+    // num formato de recorrência que a função não conhece — guarda defensiva.
+    const competencia = occurrenceCompetencia(item.account, year, month);
+    if (!competencia) {
+      toast.warning("Não foi possível identificar a parcela deste mês.");
+      return;
+    }
+    setPayingKey(item.key);
+    const result = await accountHooks[item.tipo].togglePaymentStatus(
+      item.account.id,
+      competencia,
+      false
+    );
+    setPayingKey(null);
+    if (result.success) {
+      const [cy, cm] = competencia.split("-");
+      const when = `${MONTH_NAMES[parseInt(cm, 10) - 1]}/${cy}`;
+      // Numa meta, "pago" é "aporte registrado" — ver Quitação do mês.
+      toast.success(
+        item.tipo === 4
+          ? `Aporte de ${when} registrado em "${item.name}".`
+          : `"${item.name}" marcada como paga em ${when}.`
+      );
+    } else {
+      toast.error(result.error);
+    }
   };
 
   // Navegação de período: avança/retrocede um mês, virando o ano quando passa
@@ -370,6 +479,10 @@ function Dashboard() {
 
         pending.push({
           key: `${acc.tipo}-${acc.id}`,
+          // Lançamento original + tipo do bucket: o menu da linha precisa dos
+          // dois para quitar a parcela no hook certo.
+          account: acc,
+          tipo: b.tipo,
           name: acc.name,
           value,
           day,
@@ -684,7 +797,17 @@ function Dashboard() {
                             .map((item) => {
                               const badge = dueBadge(item);
                               return (
-                                <DueRow key={item.key}>
+                                <DueRow
+                                  key={item.key}
+                                  type="button"
+                                  onClick={(e) =>
+                                    openDueMenu(item, e.currentTarget)
+                                  }
+                                  disabled={payingKey === item.key}
+                                  aria-haspopup="menu"
+                                  aria-expanded={dueMenu?.item.key === item.key}
+                                  title="Ações deste vencimento"
+                                >
                                   <DueDay
                                     $color={
                                       item.late ? STATUS.critical : undefined
@@ -713,6 +836,41 @@ function Dashboard() {
                               );
                             })}
                         </DueList>
+                        {dueMenu && (
+                          <ModalPortal>
+                            <DueMenu
+                              ref={dueMenuRef}
+                              role="menu"
+                              aria-label={`Ações de ${dueMenu.item.name}`}
+                              style={dueMenu.pos}
+                            >
+                              <DueMenuItem
+                                type="button"
+                                role="menuitem"
+                                $color={STATUS.good}
+                                onClick={() => handleMarkPaid(dueMenu.item)}
+                              >
+                                ✓{" "}
+                                {dueMenu.item.tipo === 4
+                                  ? "Registrar aporte"
+                                  : "Marcar como paga"}
+                              </DueMenuItem>
+                              <DueMenuItem
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  const route = BUDGET.find(
+                                    (b) => b.tipo === dueMenu.item.tipo
+                                  )?.route;
+                                  setDueMenu(null);
+                                  if (route) navigate(route);
+                                }}
+                              >
+                                {EyeIcon} Ver em {dueMenu.item.label}
+                              </DueMenuItem>
+                            </DueMenu>
+                          </ModalPortal>
+                        )}
                         <DueFoot>
                           <span>
                             {settlement.pending.length > DUE_LIST_LIMIT

@@ -654,19 +654,111 @@ export const DueHeadRow = styled.div`
 `;
 
 /* dia · nome (com ponto do bucket) · valor. O dia é a primeira coluna porque a
-   pergunta aqui é "quando", não "quanto". */
-export const DueRow = styled.div`
+   pergunta aqui é "quando", não "quanto".
+
+   É um <button>: a linha INTEIRA abre o menu de ações (DueMenu), não só o
+   badge — vencimento distante não tem badge, e a linha dele também precisa
+   poder ser quitada. Sendo botão, ganha foco e Enter/Espaço de graça. O reset
+   abaixo (fundo, borda, fonte, cor, alinhamento) desfaz o estilo nativo; sem
+   ele a linha vira um botão cinza com texto centralizado. */
+export const DueRow = styled.button`
   display: grid;
   grid-template-columns: 3.4rem 1fr auto;
   align-items: center;
   gap: 1.2rem;
+  width: 100%;
   padding: 0.8rem 0.6rem;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: 1.4rem;
-  transition: background-color 0.2s var(--ease);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease), opacity 0.2s var(--ease);
 
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  &:hover,
+  &[aria-expanded="true"] {
+    background-color: rgba(255, 255, 255, 0.07);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--RoxoClaro);
+    outline-offset: 1px;
+  }
+
+  /* Pagamento em voo: a linha apaga e trava, para um segundo clique não
+     disparar outro PUT da mesma parcela. */
+  &:disabled {
+    opacity: 0.45;
+    cursor: progress;
+  }
+`;
+
+/* Menu de ações de um vencimento. Vai para o <body> via ModalPortal com
+   `position: fixed` — o SettleCard tem `backdrop-filter`, que cria stacking
+   context: dentro dele, o menu da ÚLTIMA linha transbordaria o card e seria
+   pintado POR BAIXO dos cards de vidro da seção seguinte. A posição vem do
+   getBoundingClientRect da linha, medida na abertura; por isso o menu fecha em
+   qualquer scroll/resize em vez de tentar acompanhar a linha. */
+export const DueMenu = styled.div`
+  position: fixed;
+  z-index: 900;
+  min-width: 22rem;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: rgba(28, 0, 44, 0.97);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  animation: dueMenuIn 0.14s var(--ease);
+
+  @keyframes dueMenuIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+/* Itens do menu — mesma linguagem das opções do Select. A ação principal vem
+   com `$color` (verde de "pago"); os demais ficam neutros. */
+export const DueMenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: ${(p) => p.$color || "var(--text-muted)"};
+  font: inherit;
+  font-size: 1.45rem;
+  font-weight: ${(p) => (p.$color ? 600 : 400)};
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(164, 93, 231, 0.22);
+    color: ${(p) => p.$color || "#fff"};
+    outline: none;
   }
 `;
 
